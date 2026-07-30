@@ -1,0 +1,813 @@
+@import url('https://fonts.googleapis.com/css2?family=SF+Pro+Display:wght@300;400;500;600;700&display=swap');
+
+:root {
+  /* iOS-style easing curves */
+  --ease-ios: cubic-bezier(0.32, 0.72, 0, 1);
+  --ease-ios-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-in-out-ios: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-bounce: cubic-bezier(0.68, -0.55, 0.265, 1.55);
+  --ease-smooth: cubic-bezier(0.25, 0.1, 0.25, 1);
+  --ease-dramatic: cubic-bezier(0.87, 0, 0.13, 1);
+}
+
+/* ============================================
+   BASE ANIMATIONS - iOS Style
+   ============================================ */
+
+/* Smooth fade in with upward movement */
+@keyframes iosFadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Fade in with slight scale */
+@keyframes iosFadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Slide up from bottom (modal style) */
+@keyframes iosSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(60px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Slide in from right (page navigation) */
+@keyframes iosSlideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* Elastic pop for interactive elements */
+@keyframes iosPop {
+  0% {
+    opacity: 0;
+    transform: scale(0.5);
+  }
+  70% {
+    transform: scale(1.02);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Gentle pulse for attention */
+@keyframes iosPulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.03);
+  }
+}
+
+/* Shimmer effect for loading/placeholders */
+@keyframes iosShimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+/* Staggered list item entrance */
+@keyframes iosListItem {
+  from {
+    opacity: 0;
+    transform: translateX(-12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* Card hover lift */
+@keyframes iosCardLift {
+  from {
+    transform: translateY(0);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+  }
+  to {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+  }
+}
+
+/* Number count up animation */
+@keyframes iosCountUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Tab indicator slide */
+@keyframes iosTabSlide {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+/* ============================================
+   ANIMATION CLASSES
+   ============================================ */
+
+/* Base animation wrapper */
+.animate-fade-up {
+  animation: iosFadeUp 0.5s var(--ease-ios) both;
+}
+
+.animate-fade-in {
+  animation: iosFadeIn 0.4s var(--ease-ios) both;
+}
+
+.animate-slide-up {
+  animation: iosSlideUp 0.5s var(--ease-ios) both;
+}
+
+.animate-slide-in-right {
+  animation: iosSlideInRight 0.4s var(--ease-ios) both;
+}
+
+.animate-pop {
+  animation: iosPop 0.4s var(--ease-ios-spring) both;
+}
+
+.animate-pulse {
+  animation: iosPulse 2s var(--ease-in-out-ios) infinite;
+}
+
+.animate-list-item {
+  animation: iosListItem 0.35s var(--ease-ios) both;
+}
+
+/* Stagger delays for lists */
+.stagger-1 { animation-delay: 0.05s; }
+.stagger-2 { animation-delay: 0.1s; }
+.stagger-3 { animation-delay: 0.15s; }
+.stagger-4 { animation-delay: 0.2s; }
+.stagger-5 { animation-delay: 0.25s; }
+.stagger-6 { animation-delay: 0.3s; }
+
+/* ============================================
+   iOS-STYLE CARD EFFECTS
+   ============================================ */
+
+/* Glass morphism card with iOS feel */
+.ios-card {
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.08) 0%,
+    rgba(255, 255, 255, 0.02) 100%
+  );
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 20px;
+  backdrop-filter: blur(40px) saturate(180%);
+  -webkit-backdrop-filter: blur(40px) saturate(180%);
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  position: relative;
+  overflow: hidden;
+  transition: all 0.4s var(--ease-ios);
+}
+
+.ios-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 50%;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.1) 0%,
+    transparent 100%
+  );
+  pointer-events: none;
+  border-radius: 20px 20px 0 0;
+}
+
+.ios-card:hover {
+  transform: translateY(-2px) scale(1.01);
+  box-shadow:
+    0 16px 48px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.15);
+}
+
+.ios-card:active {
+  transform: scale(0.98);
+  transition-duration: 0.1s;
+}
+
+/* Large iOS button */
+.ios-button {
+  position: relative;
+  padding: 16px 24px;
+  border: none;
+  border-radius: 14px;
+  font-size: 16px;
+  font-weight: 600;
+  color: white;
+  cursor: pointer;
+  overflow: hidden;
+  transition: all 0.3s var(--ease-ios);
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #ec4899 100%);
+  box-shadow: 0 4px 20px rgba(139, 92, 246, 0.4);
+}
+
+.ios-button::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.2) 0%,
+    transparent 50%
+  );
+  pointer-events: none;
+}
+
+.ios-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 32px rgba(139, 92, 246, 0.5);
+}
+
+.ios-button:active {
+  transform: scale(0.95);
+  transition-duration: 0.1s;
+}
+
+/* ============================================
+   SMOOTH SCROLL & TOUCH
+   ============================================ */
+
+/* Smooth scrolling with iOS momentum */
+.ios-scroll {
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
+  overscroll-behavior-y: contain;
+}
+
+/* Hide scrollbar but keep functionality */
+.ios-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.ios-scroll {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* ============================================
+   ENHANCED TOUCH FEEDBACK
+   ============================================ */
+
+/* Remove default tap highlight */
+.ios-touch {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* Touch feedback ripple */
+.ios-ripple {
+  position: relative;
+  overflow: hidden;
+}
+
+.ios-ripple::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.3) 0%, transparent 70%);
+  opacity: 0;
+  transform: scale(0);
+  transition: all 0.5s var(--ease-ios);
+  pointer-events: none;
+}
+
+.ios-ripple:active::after {
+  opacity: 1;
+  transform: scale(2.5);
+  transition: 0s;
+}
+
+/* ============================================
+   PAGE TRANSITION STYLES
+   ============================================ */
+
+/* Page transition container */
+.page-transition {
+  position: relative;
+  width: 100%;
+  min-height: 100%;
+}
+
+/* Slide transition for pages */
+.slide-enter {
+  opacity: 0;
+  transform: translateX(30px);
+}
+
+.slide-enter-active {
+  opacity: 1;
+  transform: translateX(0);
+  transition: all 0.35s var(--ease-ios);
+}
+
+.slide-exit {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.slide-exit-active {
+  opacity: 0;
+  transform: translateX(-30px);
+  transition: all 0.35s var(--ease-ios);
+}
+
+/* Fade transition for modals/overlays */
+.fade-enter {
+  opacity: 0;
+  transform: scale(0.95) translateY(10px);
+}
+
+.fade-enter-active {
+  opacity: 1;
+  transform: scale(1) translateY(0);
+  transition: all 0.3s var(--ease-ios);
+}
+
+.fade-exit {
+  opacity: 1;
+  transform: scale(1) translateY(0);
+}
+
+.fade-exit-active {
+  opacity: 0;
+  transform: scale(0.95) translateY(10px);
+  transition: all 0.25s var(--ease-ios);
+}
+
+/* ============================================
+   STAT CARD ENHANCEMENTS
+   ============================================ */
+
+.stat-card-enhanced {
+  position: relative;
+  padding: 20px;
+  border-radius: 20px;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.06) 0%,
+    rgba(255, 255, 255, 0.01) 100%
+  );
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  overflow: hidden;
+  transition: all 0.4s var(--ease-ios);
+  transform-style: preserve-3d;
+  perspective: 1000px;
+}
+
+.stat-card-enhanced::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--accent, rgba(139, 92, 246, 0.5)) 50%,
+    transparent 100%
+  );
+}
+
+.stat-card-enhanced:hover {
+  transform: translateY(-4px) rotateX(2deg);
+  border-color: rgba(255, 255, 255, 0.14);
+  box-shadow:
+    0 20px 40px rgba(0, 0, 0, 0.3),
+    0 0 0 1px rgba(255, 255, 255, 0.05) inset;
+}
+
+.stat-card-enhanced .stat-value {
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+  background: linear-gradient(135deg, #fff 0%, rgba(255, 255, 255, 0.85) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* ============================================
+   CHART ANIMATIONS
+   ============================================ */
+
+/* Bar chart fill animation */
+.chart-bar-fill {
+  transition: height 0.8s var(--ease-ios),
+              width 0.8s var(--ease-ios);
+  transform-origin: bottom;
+}
+
+/* Pie chart segment animation */
+.chart-segment {
+  transition: all 0.4s var(--ease-ios);
+  transform-origin: center;
+  cursor: pointer;
+}
+
+.chart-segment:hover {
+  transform: scale(1.05);
+  filter: brightness(1.1);
+}
+
+/* ============================================
+   TAB BAR ENHANCEMENTS
+   ============================================ */
+
+.tab-nav-ios {
+  position: fixed;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  max-width: 520px;
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+  background: rgba(7, 7, 13, 0.85);
+  backdrop-filter: blur(40px) saturate(180%);
+  -webkit-backdrop-filter: blur(40px) saturate(180%);
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  z-index: 100;
+}
+
+.tab-btn-ios {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 12px;
+  border: none;
+  background: transparent;
+  color: var(--text-3);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.3s var(--ease-ios-spring);
+  position: relative;
+  flex: 1;
+  max-width: 80px;
+}
+
+.tab-btn-ios svg {
+  width: 22px;
+  height: 22px;
+  transition: all 0.3s var(--ease-ios-spring);
+}
+
+.tab-btn-ios span {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  transition: all 0.3s var(--ease-ios);
+}
+
+.tab-btn-ios:hover {
+  color: var(--text-2);
+}
+
+.tab-btn-ios.active {
+  color: var(--text);
+}
+
+.tab-btn-ios.active svg {
+  color: #a78bfa;
+  filter: drop-shadow(0 0 8px rgba(167, 139, 250, 0.6));
+  transform: translateY(-2px) scale(1.1);
+}
+
+.tab-btn-ios.active::after {
+  content: '';
+  position: absolute;
+  top: -1px;
+  left: 50%;
+  transform: translateX(-50%) scaleX(1);
+  width: 20px;
+  height: 3px;
+  background: linear-gradient(90deg, #8b5cf6, #ec4899);
+  border-radius: 0 0 3px 3px;
+  box-shadow: 0 0 12px rgba(139, 92, 246, 0.6);
+  animation: iosTabSlide 0.3s var(--ease-ios-spring) both;
+}
+
+/* ============================================
+   FORM ENHANCEMENTS
+   ============================================ */
+
+.ios-input {
+  width: 100%;
+  padding: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(0, 0, 0, 0.3);
+  color: var(--text);
+  border-radius: 14px;
+  font-size: 16px;
+  font-family: inherit;
+  transition: all 0.25s var(--ease-ios);
+  outline: none;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.ios-input:focus {
+  border-color: rgba(139, 92, 246, 0.5);
+  box-shadow: 0 0 0 4px rgba(139, 92, 246, 0.1);
+  background: rgba(0, 0, 0, 0.4);
+  transform: scale(1.01);
+}
+
+/* Toggle switch iOS style */
+.ios-toggle {
+  position: relative;
+  width: 52px;
+  height: 32px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  cursor: pointer;
+  transition: background 0.3s var(--ease-ios);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.ios-toggle.active {
+  background: linear-gradient(135deg, #34d399, #10b981);
+}
+
+.ios-toggle-knob {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 28px;
+  height: 28px;
+  background: white;
+  border-radius: 50%;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  transition: transform 0.3s var(--ease-ios-spring);
+}
+
+.ios-toggle.active .ios-toggle-knob {
+  transform: translateX(20px);
+}
+
+/* ============================================
+   LOADING & SKELETON
+   ============================================ */
+
+.ios-skeleton {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.03) 25%,
+    rgba(255, 255, 255, 0.08) 50%,
+    rgba(255, 255, 255, 0.03) 75%
+  );
+  background-size: 200% 100%;
+  animation: iosShimmer 1.5s infinite linear;
+  border-radius: 8px;
+}
+
+/* ============================================
+   SHADOW SYSTEM
+   ============================================ */
+
+.ios-shadow-sm {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.ios-shadow-md {
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+}
+
+.ios-shadow-lg {
+  box-shadow:
+    0 16px 48px rgba(0, 0, 0, 0.35),
+    0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.ios-shadow-glow {
+  box-shadow:
+    0 0 40px rgba(139, 92, 246, 0.2),
+    0 0 80px rgba(236, 72, 153, 0.1);
+}
+
+/* ============================================
+   REDUCED MOTION
+   ============================================ */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ============================================
+   RESPONSIVE ENHANCEMENTS
+   ============================================ */
+
+@media (max-width: 480px) {
+  .ios-card {
+    border-radius: 16px;
+  }
+  
+  .ios-button {
+    padding: 14px 20px;
+    font-size: 15px;
+  }
+  
+  .stat-card-enhanced {
+    padding: 16px;
+  }
+}
+
+/* ============================================
+   SPECIAL EFFECTS
+   ============================================ */
+
+/* Glow effect for active elements */
+.ios-glow {
+  position: relative;
+}
+
+.ios-glow::after {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  background: linear-gradient(
+    135deg,
+    rgba(139, 92, 246, 0.4),
+    rgba(236, 72, 153, 0.4)
+  );
+  filter: blur(8px);
+  opacity: 0;
+  transition: opacity 0.3s var(--ease-ios);
+  z-index: -1;
+}
+
+.ios-glow:hover::after {
+  opacity: 1;
+}
+
+/* Glass reflection effect */
+.ios-reflection {
+  position: relative;
+  overflow: hidden;
+}
+
+.ios-reflection::after {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: linear-gradient(
+    45deg,
+    transparent 30%,
+    rgba(255, 255, 255, 0.03) 50%,
+    transparent 70%
+  );
+  pointer-events: none;
+}
+
+/* OTA update card */
+.update-card .update-result {
+  margin-top: 12px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: rgba(34, 197, 94, 0.08);
+  border: 1px solid rgba(34, 197, 94, 0.2);
+  color: #d1fae5;
+  font-size: 0.88rem;
+  overflow: hidden;
+}
+.update-card .update-result p { margin: 0; }
+
+/* Live rate bar on Dashboard */
+.live-rate-bar {
+  padding: 14px 16px 12px;
+  margin-bottom: 14px;
+}
+.live-rate-bar__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-2, #9aa4b2);
+}
+.live-rate-bar__dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: #22c55e;
+  box-shadow: 0 0 8px rgba(34, 197, 94, 0.7);
+  animation: live-pulse 1.6s ease-in-out infinite;
+}
+@keyframes live-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(0.85); }
+}
+.live-rate-bar__title { flex: 1; }
+.live-rate-bar__refresh {
+  background: transparent; border: 0; color: var(--text-2, #9aa4b2);
+  display: inline-flex; align-items: center; justify-content: center;
+  padding: 4px; border-radius: 6px; cursor: pointer;
+  width: 26px; height: 26px;
+}
+.live-rate-bar__refresh:hover { color: var(--text-1, #fff); background: rgba(255,255,255,0.05); }
+.live-rate-bar__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  gap: 8px;
+}
+.rate-cell {
+  display: flex;
+  flex-direction: column;
+  padding: 10px 12px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 12px;
+  cursor: default;
+}
+.rate-cell--highlight {
+  background: linear-gradient(135deg, rgba(99,102,241,0.18), rgba(168,85,247,0.12));
+  border-color: rgba(99,102,241,0.4);
+  box-shadow: 0 4px 16px rgba(99,102,241,0.15);
+}
+.rate-cell__code { font-size: 0.72rem; color: var(--text-2, #9aa4b2); letter-spacing: 0.05em; }
+.rate-cell__value { font-size: 1.15rem; font-weight: 600; margin-top: 2px; }
+.live-rate-bar__foot {
+  margin-top: 8px;
+  font-size: 0.7rem;
+  color: var(--text-3, #6b7280);
+}
+
+/* Search icon variant in settings */
+.settings-icon--search {
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  color: #fff;
+}
+
+/* Data icon variant in settings */
+.settings-icon--data {
+  background: linear-gradient(135deg, #f59e0b, #ef4444);
+  color: #fff;
+}

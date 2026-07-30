@@ -1,0 +1,2 @@
+2026-06-02 15:58:31,705 [INFO] finera: Finera API v1.2.0 started
+2026-06-02 15:58:35,091 [INFO] httpx: HTTP Request: GET https://open.er-api.com/v6/latest/USD "HTTP/1.1 200 OK"
