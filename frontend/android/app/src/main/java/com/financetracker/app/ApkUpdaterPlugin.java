@@ -51,7 +51,7 @@ public class ApkUpdaterPlugin extends Plugin {
             request.setDestinationUri(Uri.fromFile(dest));
             request.setTitle("Finera Update");
             request.setDescription("Downloading new version...");
-            request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_HIDDEN);
+            request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
             request.setMimeType("application/vnd.android.package-archive");
 
             DownloadManager dm = (DownloadManager) getContext().getSystemService(Context.DOWNLOAD_SERVICE);
