@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { KeyIcon, SaveIcon, TrashIcon, EyeIcon, EyeOffIcon, CheckIcon, SearchIcon, DownloadIcon, UploadIcon, ZapIcon, RefreshIcon } from './Icons'
+import { KeyIcon, SaveIcon, TrashIcon, EyeIcon, EyeOffIcon, CheckIcon, SearchIcon, DownloadIcon, ZapIcon, RefreshIcon } from './Icons'
 import { getGroqKey, setGroqKey, hasGroqKey, testConnection as testGroq } from '../utils/groq'
 import { getTavilyKey, setTavilyKey, hasTavilyKey, testConnection as testTavily } from '../utils/tavily'
 import * as db from '../utils/db'
@@ -299,23 +299,6 @@ function ApiKeyCard({ title, description, helpUrl, helpSteps, icon, iconClass, g
 function DataCard({ refreshData, currency }) {
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState(null)
-  const fileRef = useRef(null)
-
-  const handleExport = async () => {
-    setBusy(true)
-    try {
-      const json = await db.exportJSON()
-      const blob = new Blob([json], { type: 'application/json' })
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = `finera-backup-${new Date().toISOString().slice(0, 10)}.json`
-      a.click()
-      URL.revokeObjectURL(url)
-      setMsg({ kind: 'ok', text: 'Backup downloaded' })
-    } catch (e) { setMsg({ kind: 'err', text: e.message }) }
-    finally { setBusy(false); setTimeout(() => setMsg(null), 3000) }
-  }
 
   const handleExportPDF = async () => {
     setBusy(true)
@@ -329,23 +312,6 @@ function DataCard({ refreshData, currency }) {
       })
     } catch (e) { setMsg({ kind: 'err', text: e.message || 'PDF export failed' }) }
     finally { setBusy(false); setTimeout(() => setMsg(null), 4000) }
-  }
-
-  const handleImport = async (e) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-    setBusy(true)
-    try {
-      const text = await file.text()
-      const n = await db.importJSON(text)
-      setMsg({ kind: 'ok', text: `Imported ${n} transactions` })
-      if (refreshData) refreshData()
-    } catch (err) { setMsg({ kind: 'err', text: err.message || 'Import failed' }) }
-    finally {
-      setBusy(false)
-      e.target.value = ''
-      setTimeout(() => setMsg(null), 3000)
-    }
   }
 
   const handleClear = async () => {
@@ -370,22 +336,17 @@ function DataCard({ refreshData, currency }) {
         </h3>
       </div>
       <p className="settings-desc">
-        Export a PDF report (date, time, amount — like a spreadsheet) or a JSON backup file you can restore later.
+        Export a PDF report with date, time, amount and category details.
       </p>
       <div className="button-group">
         <motion.button type="button" className="update-btn update-btn--sm" onClick={handleExportPDF} disabled={busy} whileTap={{ scale: 0.95 }}>
           <DownloadIcon /> <span>Export PDF</span>
         </motion.button>
-        <motion.button type="button" className="save-btn" onClick={handleExport} disabled={busy} whileTap={{ scale: 0.96 }}>
-          <DownloadIcon /> <span>Export JSON</span>
-        </motion.button>
-        <motion.button type="button" className="save-btn" onClick={() => fileRef.current?.click()} disabled={busy} whileTap={{ scale: 0.96 }}>
-          <UploadIcon /> <span>Import JSON</span>
-        </motion.button>
+
         <motion.button type="button" className="clear-btn" onClick={handleClear} disabled={busy} aria-label="Delete all" whileTap={{ scale: 0.9 }}>
           <TrashIcon />
         </motion.button>
-        <input ref={fileRef} type="file" accept="application/json" onChange={handleImport} style={{ display: 'none' }} />
+
       </div>
       <AnimatePresence>
         {msg && (
