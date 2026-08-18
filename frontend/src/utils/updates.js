@@ -46,7 +46,11 @@ export async function checkForUpdates({ force = false } = {}) {
 
   const cache = readCache()
   if (!force && cache.checkedAt && Date.now() - cache.checkedAt < CACHE_TTL) {
-    return { ...cache.payload, fromCache: true }
+    const cached = { ...cache.payload, fromCache: true }
+    cached.currentVersion = getCurrentVersion()
+    cached.updateAvailable = compareVersions(cached.latestVersion || '', cached.currentVersion) > 0
+    cached.reason = cached.updateAvailable ? 'new-version' : 'up-to-date'
+    return cached
   }
 
   try {
@@ -90,6 +94,10 @@ export async function checkForUpdates({ force = false } = {}) {
     console.warn('Update check failed:', e)
     return { updateAvailable: false, reason: 'error', currentVersion: getCurrentVersion(), error: e.message }
   }
+}
+
+export function clearUpdateCache() {
+  try { localStorage.removeItem(CACHE_KEY) } catch {}
 }
 
 export function formatSize(bytes) {

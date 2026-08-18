@@ -5,7 +5,7 @@ import { getGroqKey, setGroqKey, hasGroqKey, testConnection as testGroq } from '
 import { getTavilyKey, setTavilyKey, hasTavilyKey, testConnection as testTavily } from '../utils/tavily'
 import * as db from '../utils/db'
 import { APP_VERSION } from '../utils/version'
-import { checkForUpdates, formatSize, getCurrentVersion } from '../utils/updates'
+import { checkForUpdates, formatSize, getCurrentVersion, clearUpdateCache } from '../utils/updates'
 import { canDownloadInApp, downloadApk, pollDownload, installApk } from '../utils/apkUpdater'
 import { exportTransactionsPDF } from '../utils/pdfExport'
 
@@ -479,6 +479,7 @@ function UpdateCard() {
     setMsg(null)
     try {
       await installApk(filePath)
+      clearUpdateCache()
       setMsg({ kind: 'ok', text: 'Installer opened. Tap "Install" to finish the update. The app will restart automatically.' })
     } catch (e) {
       setMsg({ kind: 'err', text: e.message || 'Install failed' })
