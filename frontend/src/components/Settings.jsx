@@ -500,7 +500,7 @@ function UpdateCard() {
           App update
         </h3>
         <span className={`status-badge ${badgeClass}`}>
-          {status === 'available' && !downloading && !downloaded && `v${info.latestVersion} ready`}
+          {status === 'available' && !downloading && !downloaded && 'Update available'}
           {status === 'available' && downloading && 'Downloading'}
           {status === 'available' && downloaded && 'Downloaded'}
           {status === 'uptodate' && 'Up to date'}
@@ -513,7 +513,7 @@ function UpdateCard() {
         {status === 'available' && !downloading && !downloaded
           ? `A new version (v${info.latestVersion}) is available. You are on v${info.currentVersion}. Tap below to download it. Your data is kept during the update.`
           : status === 'available' && downloaded
-            ? `v${info.latestVersion} downloaded. Tap "Update now" below to install it. Your data is kept during the update.`
+            ? `v${info.latestVersion} downloaded. Tap "Update now" to install the update. Your data is kept during the update.`
             : status === 'uptodate'
               ? `You are on the latest version (v${info.currentVersion}). New releases are checked from GitHub automatically.`
               : status === 'error'
@@ -542,7 +542,7 @@ function UpdateCard() {
                 <line x1="12" y1="15" x2="12" y2="3" />
               </svg>
               <span>
-                Update now
+                Download
                 {info?.size ? `  \u00B7 ${formatSize(info.size)}` : ''}
               </span>
             </motion.button>
