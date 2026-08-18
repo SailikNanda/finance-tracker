@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, Suspense, lazy } from 'react'
+import React, { useState, useEffect, useCallback, useMemo, Suspense, lazy } from 'react'
 import { motion } from 'framer-motion'
 import { HapticProvider } from './components/HapticFeedback'
 import { DashboardIcon, PlusIcon, ListIcon, AIIcon, SettingsIcon, BanknoteIcon } from './components/Icons'
@@ -44,9 +44,7 @@ const TABS = [
 
 function App() {
   const [activeTab, setActiveTab] = useState('dashboard')
-  const [transactions, setTransactions] = useState([])
-  const [summary, setSummary] = useState(null)
-  const [categories, setCategories] = useState([])
+  const [data, setData] = useState({ transactions: [], summary: null, categories: [] })
   const [currentMonth, setCurrentMonth] = useState(new Date().getMonth() + 1)
   const [currentYear, setCurrentYear] = useState(new Date().getFullYear())
   const [loading, setLoading] = useState(false)
@@ -73,9 +71,7 @@ function App() {
         db.getSummary(currentMonth, currentYear, currency),
         db.getCategories(currentMonth, currentYear, currency),
       ])
-      setTransactions(t)
-      setSummary(s)
-      setCategories(c)
+      setData({ transactions: t, summary: s, categories: c })
     } catch (err) {
       console.error('Failed to load data:', err)
     } finally {
@@ -129,12 +125,12 @@ function App() {
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         symbol={symbol}
-        summary={summary}
-        categories={categories}
+        summary={data.summary}
+        categories={data.categories}
         loading={loading}
         currency={currency}
         updateCurrency={updateCurrency}
-        transactions={transactions}
+        transactions={data.transactions}
         addTransaction={addTransaction}
         deleteTransaction={deleteTransaction}
         startEdit={startEdit}
@@ -150,7 +146,7 @@ function App() {
   )
 }
 
-function TabPanel({ isActive, children }) {
+const TabPanel = React.memo(function TabPanel({ isActive, children }) {
   const [hasBeenActive, setHasBeenActive] = useState(false)
 
   useEffect(() => {
@@ -164,9 +160,9 @@ function TabPanel({ isActive, children }) {
       {hasBeenActive ? children : null}
     </div>
   )
-}
+})
 
-function TabButton({ id, label, Icon, isActive, onClick }) {
+const TabButton = React.memo(function TabButton({ id, label, Icon, isActive, onClick }) {
   return (
     <button
       className={`tab-btn ${isActive ? 'active' : ''}`}
@@ -182,7 +178,7 @@ function TabButton({ id, label, Icon, isActive, onClick }) {
       <span className="tab-btn__label">{label}</span>
     </button>
   )
-}
+})
 
 function TabFallback() {
   return (
@@ -199,10 +195,15 @@ function AppContent({
   deleteTransaction, startEdit, cancelEdit, editingTx,
   currentMonth, currentYear, setCurrentMonth, setCurrentYear, refreshData
 }) {
-  const openTab = (id) => {
+  const openTab = useCallback((id) => {
     if (id === 'add' && !editingTx) cancelEdit()
     setActiveTab(id)
-  }
+  }, [editingTx, cancelEdit, setActiveTab])
+
+  const handleMonthChange = useCallback((m, y) => {
+    setCurrentMonth(m)
+    setCurrentYear(y)
+  }, [setCurrentMonth, setCurrentYear])
 
   return (
     <div className="app">
@@ -232,7 +233,7 @@ function AppContent({
           <MonthSelector
             month={currentMonth}
             year={currentYear}
-            onChange={(m, y) => { setCurrentMonth(m); setCurrentYear(y) }}
+            onChange={handleMonthChange}
           />
         </Suspense>
       </header>

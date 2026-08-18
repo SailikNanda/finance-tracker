@@ -100,15 +100,23 @@ async function groqRequest(prompt, messages) {
   const content = String(msg.content || '').trim()
   const reasoning = String(msg.reasoning_content || '').trim()
   if (!content && reasoning) return ''
-  return stripThinking(content)
+  let result = stripThinking(content)
+  // If reasoning exists, the content may still contain leaked thinking fragments.
+  // Apply a stricter filter: drop content that is mostly short/repetitive filler.
+  if (reasoning && result.split(/\s+/).length < 8) return ''
+  return result
 }
 
 // Remove any embedded thinking blocks that may leak into content.
 function stripThinking(text) {
   return String(text)
     .replace(/<thinking>[\s\S]*?<\/thinking>/g, '')
+    .replace(/<\/?think>/g, '')
     .replace(/```thinking[\s\S]*?```/g, '')
-    .replace(/^thinking:\s*[\s\S]*?\n{2,}/i, '')
+    .replace(/^thinking:\s*[\s\S]*?\n{2,}/im, '')
+    .replace(/^\s*Let me (think|consider|analyze|break down)[\s\S]*?\n{2,}/im, '')
+    .replace(/^\s*Okay[\s,]+let me[\s\S]*?\n{2,}/im, '')
+    .replace(/^\s*First[\s,]+I (need|should|must) to[\s\S]*?\n{2,}/im, '')
     .trim()
 }
 

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, memo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { TrendingUpIcon, WalletIcon, TargetIcon, PieChartIcon, BarChartIcon, RefreshIcon } from './Icons'
 import { getRates } from '../utils/tavily'
@@ -28,33 +28,35 @@ const itemVariants = {
   },
 }
 
-const StatCard = ({ type, icon, label, value, glowClass, savingsRate }) => (
-  <motion.div
-    className={`stat-card stat-card--${type}`}
-    variants={itemVariants}
-    whileHover={{ y: -4, scale: 1.02 }}
-    whileTap={{ scale: 0.98 }}
-    transition={{ type: 'spring', stiffness: 400, damping: 17 }}
-  >
-    <div className="stat-icon">{icon}</div>
-    <div className="stat-body">
-      <span className="stat-label">{label}</span>
-      <span className={`stat-value ${value.startsWith('-') || type === 'expense' ? 'negative' : type === 'income' || type === 'balance' ? 'positive' : ''}`}>
-        {value}
-      </span>
-    </div>
-    <div className={`stat-glow ${glowClass}`} />
-    {type === 'savings' && (
-      <motion.div
-        className="stat-ring"
-        style={{ '--p': `${Math.max(0, Math.min(100, savingsRate))}` }}
-        initial={{ scale: 0, rotate: -90 }}
-        animate={{ scale: 1, rotate: 0 }}
-        transition={{ delay: 0.4, type: 'spring', stiffness: 200, damping: 20 }}
-      />
-    )}
-  </motion.div>
-)
+const StatCard = memo(function StatCard({ type, icon, label, value, glowClass, savingsRate }) {
+  return (
+    <motion.div
+      className={`stat-card stat-card--${type}`}
+      variants={itemVariants}
+      whileHover={{ y: -4, scale: 1.02 }}
+      whileTap={{ scale: 0.98 }}
+      transition={{ type: 'spring', stiffness: 400, damping: 17 }}
+    >
+      <div className="stat-icon">{icon}</div>
+      <div className="stat-body">
+        <span className="stat-label">{label}</span>
+        <span className={`stat-value ${value.startsWith('-') || type === 'expense' ? 'negative' : type === 'income' || type === 'balance' ? 'positive' : ''}`}>
+          {value}
+        </span>
+      </div>
+      <div className={`stat-glow ${glowClass}`} />
+      {type === 'savings' && (
+        <motion.div
+          className="stat-ring"
+          style={{ '--p': `${Math.max(0, Math.min(100, savingsRate))}` }}
+          initial={{ scale: 0, rotate: -90 }}
+          animate={{ scale: 1, rotate: 0 }}
+          transition={{ delay: 0.4, type: 'spring', stiffness: 200, damping: 20 }}
+        />
+      )}
+    </motion.div>
+  )
+})
 
 function Dashboard({ summary, categories, loading, currency, currencies, onCurrencyChange, symbol }) {
   if (loading) {
@@ -267,9 +269,11 @@ function Dashboard({ summary, categories, loading, currency, currencies, onCurre
                         className="bar-fill"
                         style={{
                           background: `linear-gradient(90deg, ${COLORS[i % COLORS.length]}, ${COLORS[(i + 1) % COLORS.length]})`,
+                          transformOrigin: 'left',
+                          width: `${pct}%`,
                         }}
-                        initial={{ width: 0 }}
-                        animate={{ width: `${pct}%` }}
+                        initial={{ scaleX: 0 }}
+                        animate={{ scaleX: 1 }}
                         transition={{ delay: 0.5 + i * 0.07, duration: 0.8, ease: [0.32, 0.72, 0, 1] }}
                       />
                     </div>
@@ -283,19 +287,14 @@ function Dashboard({ summary, categories, loading, currency, currencies, onCurre
         </motion.div>
       </motion.section>
 
-      <motion.section
+      <section
         className="transactions-count surface"
-        variants={itemVariants}
-        whileHover={{ y: -2 }}
-        whileTap={{ scale: 0.99 }}
       >
-        <motion.span
+        <span
           className="dot-indicator"
-          animate={{ scale: [1, 1.3, 1], opacity: [1, 0.7, 1] }}
-          transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
         />
         {stats.transaction_count} transaction{stats.transaction_count === 1 ? '' : 's'} this month
-      </motion.section>
+      </section>
     </motion.div>
   )
 }

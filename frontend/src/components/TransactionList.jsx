@@ -1,4 +1,4 @@
-import React, { useState, useDeferredValue } from 'react'
+import React, { useState, useDeferredValue, useMemo, useCallback, memo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ArrowUpIcon, ArrowDownIcon, TrashIcon, PencilIcon } from './Icons'
 
@@ -12,39 +12,24 @@ function formatDate(dateStr) {
   }
 }
 
-const rowVariants = {
-  hidden: { opacity: 0, x: -20, scale: 0.97 },
-  show: (i) => ({
-    opacity: 1, x: 0, scale: 1,
-    transition: { delay: i * 0.04, type: 'spring', stiffness: 350, damping: 26 },
-  }),
-  exit: { opacity: 0, x: 30, scale: 0.95, transition: { duration: 0.2 } },
-}
-
-const containerVariants = {
-  hidden: { opacity: 0 },
-  show: { opacity: 1, transition: { staggerChildren: 0.04, delayChildren: 0.1 } },
-}
-
 function TransactionList({ transactions, loading, symbol, currencies, onDelete, onEdit }) {
   const [pendingId, setPendingId] = useState(null)
   const [filter, setFilter] = useState('all')
   const [search, setSearch] = useState('')
   const deferredSearch = useDeferredValue(search)
 
-  const getSymbolFor = (code) => {
-    const c = (currencies || []).find(x => x.code === code)
-    return c ? c.symbol : code || ''
-  }
+  const symbolMap = useMemo(() => {
+    const map = {}
+    for (const c of (currencies || [])) map[c.code] = c.symbol
+    return map
+  }, [currencies])
+
+  const getSymbolFor = useCallback((code) => symbolMap[code] || code || '', [symbolMap])
 
   if (loading) {
     return (
       <div className="loading">
-        <motion.div
-          className="spinner"
-          animate={{ rotate: 360 }}
-          transition={{ duration: 0.9, repeat: Infinity, ease: 'linear' }}
-        />
+        <div className="spinner" />
         <span>Loading transactions...</span>
       </div>
     )
@@ -108,17 +93,14 @@ function TransactionList({ transactions, loading, symbol, currencies, onDelete, 
             { id: 'income', label: 'Income' },
             { id: 'expense', label: 'Expense' },
           ].map(f => (
-            <motion.button
+            <button
               key={f.id}
               type="button"
               className={`filter-pill ${filter === f.id ? 'active' : ''}`}
               onClick={() => setFilter(f.id)}
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              transition={{ type: 'spring', stiffness: 400, damping: 18 }}
             >
               {f.label}
-            </motion.button>
+            </button>
           ))}
         </div>
         <div className="search-wrap">
@@ -149,79 +131,56 @@ function TransactionList({ transactions, loading, symbol, currencies, onDelete, 
             <p>Try a different filter or search term.</p>
           </motion.div>
         ) : (
-          <motion.div
-            key="list"
-            className="list-body"
-            variants={containerVariants}
-            initial="hidden"
-            animate="show"
-          >
-            <AnimatePresence>
-              {visible.map((tx, i) => (
-                <motion.div
-                  key={tx.id}
-                  className={`transaction-row ${tx.type}`}
-                  custom={i}
-                  variants={rowVariants}
-                  initial="hidden"
-                  animate="show"
-                  exit="exit"
-                  layout
-                  whileHover={{ x: 4, scale: 1.01, borderColor: 'rgba(139, 92, 246, 0.4)' }}
-                  whileTap={{ scale: 0.98 }}
-                  transition={{ type: 'spring', stiffness: 400, damping: 22 }}
-                >
-                  <div className="transaction-icon">
-                    {tx.type === 'income' ? <ArrowDownIcon /> : <ArrowUpIcon />}
+          <div key="list" className="list-body">
+            {visible.map((tx) => (
+              <div
+                key={tx.id}
+                className={`transaction-row ${tx.type}`}
+              >
+                <div className="transaction-icon">
+                  {tx.type === 'income' ? <ArrowDownIcon /> : <ArrowUpIcon />}
+                </div>
+                <div className="col-name">
+                  <div className="name">{tx.name}</div>
+                  <div className="meta">
+                    <span className="category-tag">{tx.category}</span>
+                    <span className="dot-sep" />
+                    <span className="date">{formatDate(tx.date)}</span>
                   </div>
-                  <div className="col-name">
-                    <div className="name">{tx.name}</div>
-                    <div className="meta">
-                      <span className="category-tag">{tx.category}</span>
-                      <span className="dot-sep" />
-                      <span className="date">{formatDate(tx.date)}</span>
-                    </div>
+                </div>
+                <div className="col-amount">
+                  <div className={`amount ${tx.type}`}>
+                    {tx.type === 'expense' ? '\u2212' : '+'}{getSymbolFor(tx.currency)}{Math.abs(tx.amount).toFixed(2)}
                   </div>
-                  <div className="col-amount">
-                    <div className={`amount ${tx.type}`}>
-                      {tx.type === 'expense' ? '\u2212' : '+'}{getSymbolFor(tx.currency)}{Math.abs(tx.amount).toFixed(2)}
-                    </div>
-                  </div>
-                  {onEdit && (
-                    <motion.button
-                      type="button"
-                      className="edit-btn"
-                      aria-label={`Edit ${tx.name}`}
-                      onClick={() => onEdit(tx)}
-                      whileHover={{ scale: 1.1, rotate: -5 }}
-                      whileTap={{ scale: 0.9 }}
-                      transition={{ type: 'spring', stiffness: 400, damping: 17 }}
-                    >
-                      <PencilIcon />
-                    </motion.button>
-                  )}
-                  {onDelete && (
-                    <motion.button
-                      type="button"
-                      className="delete-btn"
-                      aria-label={`Delete ${tx.name}`}
-                      onClick={() => handleDelete(tx.id)}
-                      disabled={pendingId === tx.id}
-                      whileHover={{ scale: 1.1, rotate: 5 }}
-                      whileTap={{ scale: 0.9 }}
-                      transition={{ type: 'spring', stiffness: 400, damping: 17 }}
-                    >
-                      {pendingId === tx.id ? <span className="mini-spinner" /> : <TrashIcon />}
-                    </motion.button>
-                  )}
-                </motion.div>
-              ))}
-            </AnimatePresence>
-          </motion.div>
+                </div>
+                {onEdit && (
+                  <button
+                    type="button"
+                    className="edit-btn"
+                    aria-label={`Edit ${tx.name}`}
+                    onClick={() => onEdit(tx)}
+                  >
+                    <PencilIcon />
+                  </button>
+                )}
+                {onDelete && (
+                  <button
+                    type="button"
+                    className="delete-btn"
+                    aria-label={`Delete ${tx.name}`}
+                    onClick={() => handleDelete(tx.id)}
+                    disabled={pendingId === tx.id}
+                  >
+                    {pendingId === tx.id ? <span className="mini-spinner" /> : <TrashIcon />}
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
         )}
       </AnimatePresence>
     </motion.div>
   )
 }
 
-export default TransactionList
+export default memo(TransactionList)

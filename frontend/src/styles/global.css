@@ -104,6 +104,9 @@ body {
 
 @media (prefers-reduced-motion: reduce) {
   .app-bg__blob { animation: none; }
+}
+@media (max-width: 768px) {
+  .app-bg__blob { display: none; }
 }/* App layout */
 .app {
   max-width: 520px;
@@ -446,7 +449,6 @@ body {
 .bar-fill {
   height: 100%;
   border-radius: 4px;
-  transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
 }
 .bar-fill::after {
@@ -1676,3 +1678,13 @@ button, .tab-btn, .category-chip, .type-btn, .save-btn, .test-btn, .clear-btn, .
   50% { opacity: 0.7; }
 }
 .update-btn--sm { padding: 10px 14px; font-size: 13px; border-radius: 12px; }
+
+@media (max-width: 768px) {
+  .surface {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    background: rgba(15, 15, 25, 0.85);
+  }
+  .month-selector { backdrop-filter: none; -webkit-backdrop-filter: none; }
+  .tab-nav { backdrop-filter: none; -webkit-backdrop-filter: none; }
+}
