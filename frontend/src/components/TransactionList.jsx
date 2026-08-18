@@ -1,6 +1,6 @@
-import React, { useState } from 'react'
+import React, { useState, useDeferredValue } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ArrowUpIcon, ArrowDownIcon, TrashIcon } from './Icons'
+import { ArrowUpIcon, ArrowDownIcon, TrashIcon, PencilIcon } from './Icons'
 
 function formatDate(dateStr) {
   try {
@@ -26,10 +26,11 @@ const containerVariants = {
   show: { opacity: 1, transition: { staggerChildren: 0.04, delayChildren: 0.1 } },
 }
 
-function TransactionList({ transactions, loading, symbol, currencies, onDelete }) {
+function TransactionList({ transactions, loading, symbol, currencies, onDelete, onEdit }) {
   const [pendingId, setPendingId] = useState(null)
   const [filter, setFilter] = useState('all')
   const [search, setSearch] = useState('')
+  const deferredSearch = useDeferredValue(search)
 
   const getSymbolFor = (code) => {
     const c = (currencies || []).find(x => x.code === code)
@@ -51,6 +52,7 @@ function TransactionList({ transactions, loading, symbol, currencies, onDelete }
 
   const handleDelete = async (id) => {
     if (!onDelete) return
+    if (!confirm('Delete this transaction? This cannot be undone.')) return
     setPendingId(id)
     await onDelete(id)
     setPendingId(null)
@@ -58,7 +60,7 @@ function TransactionList({ transactions, loading, symbol, currencies, onDelete }
 
   const visible = (transactions || [])
     .filter(t => filter === 'all' || t.type === filter)
-    .filter(t => !search.trim() || t.name.toLowerCase().includes(search.trim().toLowerCase()) || t.category.toLowerCase().includes(search.trim().toLowerCase()))
+    .filter(t => !deferredSearch.trim() || t.name.toLowerCase().includes(deferredSearch.trim().toLowerCase()) || t.category.toLowerCase().includes(deferredSearch.trim().toLowerCase()))
 
   if (!transactions || transactions.length === 0) {
     return (
@@ -185,6 +187,19 @@ function TransactionList({ transactions, loading, symbol, currencies, onDelete }
                       {tx.type === 'expense' ? '\u2212' : '+'}{getSymbolFor(tx.currency)}{Math.abs(tx.amount).toFixed(2)}
                     </div>
                   </div>
+                  {onEdit && (
+                    <motion.button
+                      type="button"
+                      className="edit-btn"
+                      aria-label={`Edit ${tx.name}`}
+                      onClick={() => onEdit(tx)}
+                      whileHover={{ scale: 1.1, rotate: -5 }}
+                      whileTap={{ scale: 0.9 }}
+                      transition={{ type: 'spring', stiffness: 400, damping: 17 }}
+                    >
+                      <PencilIcon />
+                    </motion.button>
+                  )}
                   {onDelete && (
                     <motion.button
                       type="button"

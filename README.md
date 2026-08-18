@@ -4,6 +4,17 @@ Works even if your laptop is off. Data is stored on the phone. No backend or int
 
 ---
 
+## v2.0.0 features
+
+- **In-app updates (GitHub)** — when a new release is published, users see **Settings → App update**, tap once to download and install. Data stays intact.
+- **Edit transactions** — pencil icon in History; date can be changed (backdating supported)
+- **Faster AI** — Groq **Qwen 3.6 27B** (automatic fallback to Llama 3.3 70B)
+- **Fixed backup dates** — import keeps the original dates
+- **PDF export** — spreadsheet-style report with date/time/amount columns
+- **Optimized** — code splitting, faster loads, compound IndexedDB index
+
+---
+
 ## What's changed (v1.3.0 -> v2.0.0)
 
 | Old (v1.3.0) | New (v2.0.0) |
@@ -69,16 +80,25 @@ The `backend/` folder remains in the repo but the app no longer uses it at runti
 
 ---
 
-## How to update later
+## Release system (one-click)
 
-If you make changes in React (new feature, bug fix, UI tweak):
+Two scripts handle everything — no manual version editing needed.
 
-1. Edit code under `frontend/src/`
-2. Double-click `build-apk.bat` (about 30 seconds)
-3. The new APK will be at `frontend\android\app\build\outputs\apk\debug\app-debug.apk`
-4. Install the APK on your phone (it will replace the old one — your app data will be preserved)
+### push-updates.bat — push code changes only
+Double-click (or run `push-updates.bat "commit message"` from a terminal). It commits all changes and pushes to GitHub. No version bump, no release.
 
-With Gradle cache warm, building an APK takes ~30 seconds and installing on the phone ~1 minute.
+### release-apk.bat — full release (recommended)
+Double-click, type a version like `2.0.1`, press Enter. The script does everything automatically:
+
+1. **Updates the version everywhere** — `frontend\.env` (`VITE_APP_VERSION`), `frontend\package.json`, Android `build.gradle` (`versionName` + `versionCode` auto-increment)
+2. **Builds the app** — web bundle + Android APK
+3. **Commits + tags** — `Release v2.0.1` commit and `v2.0.1` tag
+4. **Pushes to GitHub** — branch + tag
+5. **Creates a GitHub Release** — APK attached as release asset
+
+Users then see **"v2.0.1 ready"** in **Settings → App update** — tap to download and install. Data is preserved during updates.
+
+Requirements (one-time): `gh` CLI (https://cli.github.com) with `gh auth login`. Repo: `SailikNanda/finance-tracker`.
 
 ---
 
@@ -92,8 +112,8 @@ With Gradle cache warm, building an APK takes ~30 seconds and installing on the 
 Everything stays on your phone. Nothing is uploaded to the cloud or copied to your PC.
 
 Phone reset or factory restore will erase data. To back up:
-- Go to Settings -> Data backup -> Export JSON and download a file
-- Save the JSON to Google Drive / SD card / PC
+- Go to Settings -> Data backup -> Export PDF (report) or Export JSON (backup)
+- Save the file to Google Drive / SD card / PC
 - Restore with Import JSON when needed
 
 ---
@@ -114,10 +134,12 @@ Keys are stored locally in the phone's localStorage. They are never sent to any 
 ## Features
 
 - 15+ currencies with real-time day-to-day rates (Tavily)
-- AI insights (Groq Llama 3.3 70B)
+- AI insights (Groq Qwen 3.6 27B)
 - 6-month savings tips
 - Pie and bar charts for categories
 - Monthly summary
+- PDF report export (timestamped filename, spreadsheet-style table)
+- Edit + delete transactions with confirmation
 - Dark glass-morphism UI with iOS-style spring animations
 - Haptic feedback
 - 100% offline-capable
@@ -145,8 +167,9 @@ The `backend/` folder is kept for reference. `BACKEND.md` and `TAVILY.md` are le
 - framer-motion (animations)
 - Capacitor 5 (Android wrapper)
 - IndexedDB (data storage)
-- Groq SDK (AI)
+- Groq API (AI)
 - Tavily REST (live rates)
+- jsPDF (PDF export)
 - Java JDK 17 + Gradle + Android SDK (build only)
 
 ---

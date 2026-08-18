@@ -4,6 +4,16 @@
 
 ---
 
+## v2.0.0-te ki notun
+
+- **In-app update (GitHub)** — developer notun version release korle user **Settings → App update** theke ek tap-e download + install korbe (data intact)
+- **Transaction edit** — History-te pencil icon, date-o change kora jay (agkal-er kharcho add kora jay)
+- **Fast AI** — Groq **Qwen 3.6 27B** (na cholle automatic Llama 3.3 70B)
+- **Backup date fix** — import korle original date thake
+- **Optimization** — code splitting, fast load, IndexedDB index
+
+---
+
 ## v2.0-te ki notun (purono v1.3.0 theke)
 
 | Purono (v1.3.0) | Notun (v2.0.0) |
@@ -87,6 +97,19 @@ Jodi React-e kichu change kore (notun feature, bug fix, color):
 4. Phone-e sei APK file install koro (purano ta replace hobe, **data intact thakbe** - Android update-e app data preserve kore)
 
 **30 second-e notun APK, 1 minute-e phone-e install.**
+
+---
+
+## Update push kora (GitHub release)
+
+User-ra app-er **Settings → App update** theke automatic update pabe. Notun version release korar niyom:
+
+1. `frontend\.env` e `VITE_APP_VERSION` update koro (e.g. `2.0.1`)
+2. `build-apk.bat` run koro
+3. `release-apk.bat` run koro — commit + push + tag + GitHub Release + APK attach sob automatic
+4. User-er phone-e "v2.0.1 ready" dekhabe, tap korlei download + install
+
+**Dorkar:** `gh` CLI (https://cli.github.com) + `gh auth login` ekbar. Repo: `SailikNanda/finance-tracker`.
 
 ---
 

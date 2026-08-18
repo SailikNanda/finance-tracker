@@ -1,15 +1,17 @@
-import React, { useState, useEffect, useCallback } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
-import Dashboard from './components/Dashboard'
-import TransactionForm from './components/TransactionForm'
-import TransactionList from './components/TransactionList'
-import AIInsights from './components/AIInsights'
-import MonthSelector from './components/MonthSelector'
-import Settings from './components/Settings'
-import CurrencyConverter from './components/CurrencyConverter'
+import React, { useState, useEffect, useCallback, Suspense, lazy } from 'react'
+import { motion } from 'framer-motion'
 import { HapticProvider } from './components/HapticFeedback'
 import { DashboardIcon, PlusIcon, ListIcon, AIIcon, SettingsIcon, BanknoteIcon } from './components/Icons'
+import { APP_VERSION } from './utils/version'
 import * as db from './utils/db'
+
+const Dashboard = lazy(() => import('./components/Dashboard'))
+const TransactionForm = lazy(() => import('./components/TransactionForm'))
+const TransactionList = lazy(() => import('./components/TransactionList'))
+const AIInsights = lazy(() => import('./components/AIInsights'))
+const Settings = lazy(() => import('./components/Settings'))
+const CurrencyConverter = lazy(() => import('./components/CurrencyConverter'))
+const MonthSelector = lazy(() => import('./components/MonthSelector'))
 
 export const CURRENCIES = [
   { code: 'INR', symbol: '\u20B9', name: 'Indian Rupee' },
@@ -48,6 +50,7 @@ function App() {
   const [currentMonth, setCurrentMonth] = useState(new Date().getMonth() + 1)
   const [currentYear, setCurrentYear] = useState(new Date().getFullYear())
   const [loading, setLoading] = useState(false)
+  const [editingTx, setEditingTx] = useState(null)
   const [currency, setCurrencyState] = useState(() => {
     try { return localStorage.getItem(CURRENCY_STORAGE_KEY) || 'INR' } catch { return 'INR' }
   })
@@ -82,13 +85,27 @@ function App() {
 
   useEffect(() => { fetchData() }, [fetchData])
 
+  const startEdit = useCallback((tx) => {
+    setEditingTx(tx)
+    setActiveTab('add')
+  }, [])
+
+  const cancelEdit = useCallback(() => {
+    setEditingTx(null)
+  }, [])
+
   const addTransaction = useCallback(async (data) => {
     try {
-      await db.addTransaction({ currency, ...data })
+      if (data.id) {
+        await db.updateTransaction(data.id, data)
+        setEditingTx(null)
+      } else {
+        await db.addTransaction({ currency, ...data })
+      }
       await fetchData()
       return true
     } catch (err) {
-      console.error('Add failed:', err)
+      console.error('Save failed:', err)
       return false
     }
   }, [fetchData, currency])
@@ -120,6 +137,9 @@ function App() {
         transactions={transactions}
         addTransaction={addTransaction}
         deleteTransaction={deleteTransaction}
+        startEdit={startEdit}
+        cancelEdit={cancelEdit}
+        editingTx={editingTx}
         currentMonth={currentMonth}
         currentYear={currentYear}
         setCurrentMonth={setCurrentMonth}
@@ -164,11 +184,26 @@ function TabButton({ id, label, Icon, isActive, onClick }) {
   )
 }
 
+function TabFallback() {
+  return (
+    <div className="loading">
+      <div className="spinner" />
+      <span>Loading...</span>
+    </div>
+  )
+}
+
 function AppContent({
   activeTab, setActiveTab, symbol, summary, categories,
   loading, currency, updateCurrency, transactions, addTransaction,
-  deleteTransaction, currentMonth, currentYear, setCurrentMonth, setCurrentYear, refreshData
+  deleteTransaction, startEdit, cancelEdit, editingTx,
+  currentMonth, currentYear, setCurrentMonth, setCurrentYear, refreshData
 }) {
+  const openTab = (id) => {
+    if (id === 'add' && !editingTx) cancelEdit()
+    setActiveTab(id)
+  }
+
   return (
     <div className="app">
       <div className="app-bg" aria-hidden="true">
@@ -193,50 +228,68 @@ function AppContent({
             <span>smart money tracker</span>
           </div>
         </div>
-        <MonthSelector
-          month={currentMonth}
-          year={currentYear}
-          onChange={(m, y) => { setCurrentMonth(m); setCurrentYear(y) }}
-        />
+        <Suspense fallback={null}>
+          <MonthSelector
+            month={currentMonth}
+            year={currentYear}
+            onChange={(m, y) => { setCurrentMonth(m); setCurrentYear(y) }}
+          />
+        </Suspense>
       </header>
 
       <div className="main-content-wrapper" style={{ display: 'flex', flexDirection: 'column', flex: 1, width: '100%', position: 'relative', overflow: 'hidden' }}>
         <TabPanel isActive={activeTab === 'dashboard'}>
-          <Dashboard
-            summary={summary}
-            categories={categories}
-            loading={loading}
-            currency={currency}
-            currencies={CURRENCIES}
-            onCurrencyChange={updateCurrency}
-            symbol={symbol}
-          />
+          <Suspense fallback={<TabFallback />}>
+            <Dashboard
+              summary={summary}
+              categories={categories}
+              loading={loading}
+              currency={currency}
+              currencies={CURRENCIES}
+              onCurrencyChange={updateCurrency}
+              symbol={symbol}
+            />
+          </Suspense>
         </TabPanel>
         <TabPanel isActive={activeTab === 'add'}>
-          <TransactionForm
-            onSubmit={addTransaction}
-            currency={currency}
-            symbol={symbol}
-            currencies={CURRENCIES}
-          />
+          <Suspense fallback={<TabFallback />}>
+            <TransactionForm
+              key={editingTx ? editingTx.id : 'new'}
+              onSubmit={addTransaction}
+              currency={currency}
+              symbol={symbol}
+              currencies={CURRENCIES}
+              initial={editingTx}
+              onCancelEdit={cancelEdit}
+            />
+          </Suspense>
         </TabPanel>
         <TabPanel isActive={activeTab === 'history'}>
-          <TransactionList
-            transactions={transactions}
-            loading={loading}
-            symbol={symbol}
-            currencies={CURRENCIES}
-            onDelete={deleteTransaction}
-          />
+          <Suspense fallback={<TabFallback />}>
+            <TransactionList
+              transactions={transactions}
+              loading={loading}
+              symbol={symbol}
+              currencies={CURRENCIES}
+              onDelete={deleteTransaction}
+              onEdit={startEdit}
+            />
+          </Suspense>
         </TabPanel>
         <TabPanel isActive={activeTab === 'ai'}>
-          <AIInsights month={currentMonth} year={currentYear} symbol={symbol} />
+          <Suspense fallback={<TabFallback />}>
+            <AIInsights month={currentMonth} year={currentYear} symbol={symbol} />
+          </Suspense>
         </TabPanel>
         <TabPanel isActive={activeTab === 'converter'}>
-          <CurrencyConverter currencies={CURRENCIES} />
+          <Suspense fallback={<TabFallback />}>
+            <CurrencyConverter currencies={CURRENCIES} />
+          </Suspense>
         </TabPanel>
         <TabPanel isActive={activeTab === 'settings'}>
-          <Settings currency={currency} currencies={CURRENCIES} onCurrencyChange={updateCurrency} refreshData={refreshData} />
+          <Suspense fallback={<TabFallback />}>
+            <Settings currency={currency} currencies={CURRENCIES} onCurrencyChange={updateCurrency} refreshData={refreshData} />
+          </Suspense>
         </TabPanel>
       </div>
 
@@ -248,7 +301,7 @@ function AppContent({
             label={label}
             Icon={Icon}
             isActive={activeTab === id}
-            onClick={setActiveTab}
+            onClick={openTab}
           />
         ))}
       </nav>

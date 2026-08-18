@@ -61,20 +61,32 @@ const chipVariants = {
   }),
 }
 
-function TransactionForm({ onSubmit, currency, symbol, currencies, onCurrencyChange }) {
-  const [type, setType] = useState('expense')
-  const [name, setName] = useState('')
-  const [amount, setAmount] = useState('')
-  const [category, setCategory] = useState('')
+function toDateInputValue(d) {
+  const dt = d ? new Date(d) : new Date()
+  if (Number.isNaN(dt.getTime())) return ''
+  const y = dt.getFullYear()
+  const m = String(dt.getMonth() + 1).padStart(2, '0')
+  const day = String(dt.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
+}
+
+function TransactionForm({ onSubmit, currency, symbol, currencies, initial, onCancelEdit }) {
+  const editing = !!initial
+  const isIncomeTx = initial ? initial.amount > 0 : false
+  const [type, setType] = useState(editing ? (isIncomeTx ? 'income' : 'expense') : 'expense')
+  const [name, setName] = useState(initial?.name || '')
+  const [amount, setAmount] = useState(initial ? String(Math.abs(initial.amount)) : '')
+  const [category, setCategory] = useState(initial?.category || '')
   const [customCategory, setCustomCategory] = useState('')
-  const [txCurrency, setTxCurrency] = useState(currency)
+  const [txCurrency, setTxCurrency] = useState(initial?.currency || currency)
+  const [txDate, setTxDate] = useState(toDateInputValue(initial?.date))
   const [success, setSuccess] = useState(false)
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
 
   useEffect(() => {
-    setTxCurrency(currency)
-  }, [currency])
+    if (!editing) setTxCurrency(currency)
+  }, [currency, editing])
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -89,13 +101,16 @@ function TransactionForm({ onSubmit, currency, symbol, currencies, onCurrencyCha
       setError('Enter a valid amount greater than 0')
       return
     }
+    const submittedDate = txDate ? new Date(`${txDate}T12:00:00`) : null
     setSubmitting(true)
     const result = await onSubmit({
+      id: initial?.id,
       name: name.trim(),
       amount: parsed,
       category: finalCategory,
       type,
       currency: txCurrency,
+      date: submittedDate ? submittedDate.toISOString() : undefined,
     })
     setSubmitting(false)
     if (result) {
@@ -103,10 +118,11 @@ function TransactionForm({ onSubmit, currency, symbol, currencies, onCurrencyCha
       setAmount('')
       setCategory('')
       setCustomCategory('')
+      setTxDate('')
       setSuccess(true)
       setTimeout(() => setSuccess(false), 2400)
     } else {
-      setError('Could not save. Check the backend connection.')
+      setError('Could not save. Please try again.')
     }
   }
 
@@ -134,7 +150,7 @@ function TransactionForm({ onSubmit, currency, symbol, currencies, onCurrencyCha
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1 }}
       >
-        <h2>Add Transaction</h2>
+        <h2>{editing ? 'Edit Transaction' : 'Add Transaction'}</h2>
         <p>{type === 'expense' ? 'Track where your money goes' : 'Record incoming funds'}</p>
       </motion.div>
 
@@ -255,6 +271,18 @@ function TransactionForm({ onSubmit, currency, symbol, currencies, onCurrencyCha
         </motion.div>
 
         <motion.div className="form-group" variants={itemVariants}>
+          <label htmlFor="tx-date">Date</label>
+          <input
+            id="tx-date"
+            type="date"
+            value={txDate}
+            onChange={(e) => setTxDate(e.target.value)}
+            max={new Date().toISOString().slice(0, 10)}
+            className="date-input"
+          />
+        </motion.div>
+
+        <motion.div className="form-group" variants={itemVariants}>
           <label>Category</label>
           <motion.div
             className="category-grid"
@@ -340,8 +368,20 @@ function TransactionForm({ onSubmit, currency, symbol, currencies, onCurrencyCha
           transition={{ type: 'spring', stiffness: 400, damping: 18 }}
         >
           <SendIcon />
-          <span>{submitting ? 'Saving...' : (type === 'expense' ? 'Add Expense' : 'Add Income')}</span>
+          <span>{submitting ? 'Saving...' : (editing ? 'Save Changes' : (type === 'expense' ? 'Add Expense' : 'Add Income'))}</span>
         </motion.button>
+        {editing && onCancelEdit && (
+          <motion.button
+            type="button"
+            className="submit-btn submit-btn--cancel"
+            onClick={onCancelEdit}
+            variants={itemVariants}
+            whileTap={{ scale: 0.97 }}
+            transition={{ type: 'spring', stiffness: 400, damping: 18 }}
+          >
+            <span>Cancel</span>
+          </motion.button>
+        )}
       </motion.form>
     </motion.div>
   )

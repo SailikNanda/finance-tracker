@@ -27,6 +27,17 @@ export default defineConfig(({ mode }) => {
       outDir: 'dist',
       sourcemap: false,
       chunkSizeWarningLimit: 1024,
+      target: 'es2018',
+      rollupOptions: {
+        output: {
+          manualChunks(id) {
+            if (id.includes('node_modules/framer-motion') || id.includes('node_modules/motion')) return 'motion'
+            if (id.includes('node_modules/react')) return 'react'
+            if (id.includes('node_modules/@capacitor')) return 'capacitor'
+            if (id.includes('node_modules')) return 'vendor'
+          },
+        },
+      },
     },
   }
 })

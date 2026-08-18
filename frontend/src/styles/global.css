@@ -854,7 +854,7 @@ body {
 .chat-card {
   display: flex;
   flex-direction: column;
-  height: clamp(450px, 68vh, 650px);
+  height: clamp(560px, 82vh, 920px);
 }
 .chat-messages-container {
   flex: 1;
@@ -963,6 +963,22 @@ body {
 }
 .chat-message.typing .dot:nth-child(2) { animation-delay: .2s; }
 .chat-message.typing .dot:nth-child(3) { animation-delay: .4s; }
+.chat-message.typing .thinking-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-2);
+  font-size: 13px;
+  font-style: italic;
+}
+.chat-message.typing .thinking-label svg {
+  width: 14px; height: 14px;
+  animation: thinking-spin 1s linear infinite;
+}
+@keyframes thinking-spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
 @keyframes typing {
   0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
   40% { transform: scale(1); opacity: 1; }
@@ -1538,3 +1554,122 @@ button:focus-visible, a:focus-visible { outline-offset: 4px; }
   color: #fcd34d;
   font-size: 13px;
 }
+
+/* ---------- Mobile performance ---------- */
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+body {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+}
+button, select, input { touch-action: manipulation; }
+.tab-panel { content-visibility: auto; contain-intrinsic-size: auto 600px; }
+button, .tab-btn, .category-chip, .type-btn, .save-btn, .test-btn, .clear-btn, .delete-btn, .edit-btn {
+  -webkit-user-select: none; user-select: none;
+}
+
+/* ---------- Edit button in transaction rows ---------- */
+.edit-btn {
+  background: rgba(96, 165, 250, 0.12);
+  border: 1px solid rgba(96, 165, 250, 0.35);
+  color: #93c5fd;
+  width: 32px; height: 32px;
+  border-radius: 10px;
+  display: inline-flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  padding: 0;
+  cursor: pointer;
+}
+.edit-btn:disabled { opacity: 0.5; cursor: progress; }
+.edit-btn svg { width: 15px; height: 15px; display: block; }
+
+/* ---------- Date input ---------- */
+.date-input {
+  width: 100%;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,0.12);
+  background: rgba(255,255,255,0.06);
+  color: #fff;
+  font-size: 15px;
+  color-scheme: dark;
+}
+.date-input::-webkit-calendar-picker-indicator { filter: invert(1); opacity: 0.7; }
+
+/* ---------- Update progress ---------- */
+.update-progress { margin-top: 12px; }
+.progress-track {
+  height: 8px; border-radius: 6px;
+  background: rgba(255,255,255,0.08);
+  overflow: hidden;
+}
+.progress-fill {
+  height: 100%; border-radius: 6px;
+  background: linear-gradient(90deg, #34d399, #60a5fa);
+  width: 0%;
+}
+.update-progress-label {
+  display: block; margin-top: 6px;
+  font-size: 12px; color: rgba(255,255,255,0.6);
+}
+.submit-btn--cancel {
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.14);
+  color: rgba(255,255,255,0.75);
+}
+
+/* ---------- Modern update button ---------- */
+.update-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 18px;
+  border: none;
+  border-radius: 14px;
+  font-size: 14px;
+  font-weight: 700;
+  color: #fff;
+  cursor: pointer;
+  background: linear-gradient(135deg, #34d399 0%, #60a5fa 55%, #a78bfa 100%);
+  background-size: 200% 200%;
+  animation: update-btn-shift 4s ease infinite;
+  box-shadow: 0 0 0 1px rgba(255,255,255,0.08) inset,
+              0 8px 24px rgba(52, 211, 153, 0.35),
+              0 4px 14px rgba(96, 165, 250, 0.3);
+  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s ease;
+}
+.update-btn::after {
+  content: "";
+  position: absolute;
+  inset: -3px;
+  border-radius: 17px;
+  background: linear-gradient(135deg, #34d399, #60a5fa, #a78bfa);
+  filter: blur(14px);
+  opacity: 0.45;
+  z-index: -1;
+  animation: update-btn-pulse 2.4s ease-in-out infinite;
+}
+.update-btn:active { transform: scale(0.95); }
+.update-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.update-btn__icon { display: block; }
+.update-btn--ghost {
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.14);
+  color: var(--text-2);
+  font-weight: 600;
+  box-shadow: none;
+  animation: none;
+}
+.update-btn--ghost::after { display: none; }
+.update-btn--ghost:hover { color: var(--text); border-color: rgba(255,255,255,0.28); }
+@keyframes update-btn-shift {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+@keyframes update-btn-pulse {
+  0%, 100% { opacity: 0.35; }
+  50% { opacity: 0.7; }
+}
+.update-btn--sm { padding: 10px 14px; font-size: 13px; border-radius: 12px; }

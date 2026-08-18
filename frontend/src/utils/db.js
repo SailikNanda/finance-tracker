@@ -3,7 +3,7 @@ import { getRates } from './tavily'
 // No backend. No cloud. No upload. Pure local.
 
 const DB_NAME = 'finera_db'
-const DB_VERSION = 1
+const DB_VERSION = 2
 const STORE = 'transactions'
 
 let _dbPromise = null
@@ -12,14 +12,21 @@ function openDB() {
   if (_dbPromise) return _dbPromise
   _dbPromise = new Promise((resolve, reject) => {
     const req = indexedDB.open(DB_NAME, DB_VERSION)
-    req.onupgradeneeded = () => {
+    req.onupgradeneeded = (e) => {
       const db = req.result
-      if (!db.objectStoreNames.contains(STORE)) {
+      const oldVersion = e.oldVersion || 0
+      if (oldVersion < 1) {
         const os = db.createObjectStore(STORE, { keyPath: 'id', autoIncrement: true })
         os.createIndex('month', 'month', { unique: false })
         os.createIndex('year', 'year', { unique: false })
         os.createIndex('type', 'type', { unique: false })
         os.createIndex('category', 'category', { unique: false })
+        os.createIndex('monthYear', ['month', 'year'], { unique: false })
+      } else if (oldVersion < 2) {
+        const os = req.transaction.objectStore(STORE)
+        if (!os.indexNames.contains('monthYear')) {
+          os.createIndex('monthYear', ['month', 'year'], { unique: false })
+        }
       }
     }
     req.onsuccess = () => resolve(req.result)
@@ -31,92 +38,151 @@ function openDB() {
 function tx(mode) {
   return openDB().then(db => {
     const t = db.transaction(STORE, mode)
-    return t.objectStore(STORE)
+    return { store: t.objectStore(STORE), txn: t }
   })
 }
 
-export async function addTransaction({ name, amount, category, type, currency }) {
-  const os = await tx('readwrite')
+function parseDateField(date, fallbackCreatedAt) {
+  if (date) {
+    const d = new Date(date)
+    if (!Number.isNaN(d.getTime())) return d
+  }
   const now = new Date()
-  const row = {
+  if (fallbackCreatedAt) now.setTime(Number(fallbackCreatedAt) || now.getTime())
+  return now
+}
+
+function buildRow({ name, amount, category, type, currency, date, createdAt }) {
+  const d = parseDateField(date, createdAt)
+  return {
     name: String(name || '').trim(),
     amount: type === 'income' ? Number(amount) : -Number(amount),
     category: String(category || '').trim(),
     type,
     currency: currency || 'INR',
-    date: now.toISOString(),
-    month: now.getMonth() + 1,
-    year: now.getFullYear(),
-    createdAt: now.getTime(),
+    date: d.toISOString(),
+    month: d.getMonth() + 1,
+    year: d.getFullYear(),
+    createdAt: Number(createdAt) || d.getTime(),
   }
+}
+
+export async function addTransaction(data) {
+  const { store, txn } = await tx('readwrite')
+  const row = buildRow(data)
   return new Promise((resolve, reject) => {
-    const req = os.add(row)
+    const req = store.add(row)
     req.onsuccess = () => resolve({ ...row, id: req.result })
     req.onerror = () => reject(req.error)
   })
 }
 
-export async function getTransactions(month, year) {
-  const os = await tx('readonly')
+export async function updateTransaction(id, data) {
+  const { store } = await tx('readwrite')
   return new Promise((resolve, reject) => {
-    const req = os.getAll()
+    const getReq = store.get(Number(id))
+    getReq.onerror = () => reject(getReq.error)
+    getReq.onsuccess = () => {
+      const existing = getReq.result
+      if (!existing) { reject(new Error('Transaction not found')); return }
+      const merged = data.date
+        ? { ...existing, ...buildRow(data), id: Number(id) }
+        : { ...existing, ...buildRow({ ...data, date: existing.date, createdAt: existing.createdAt }), id: Number(id) }
+      const putReq = store.put(merged)
+      putReq.onsuccess = () => resolve(merged)
+      putReq.onerror = () => reject(putReq.error)
+    }
+  })
+}
+
+export async function getTransactions(month, year) {
+  const { store } = await tx('readonly')
+  month = Number(month); year = Number(year)
+  return new Promise((resolve, reject) => {
+    let req
+    const idx = store.index('monthYear')
+    try {
+      req = idx.getAll(IDBKeyRange.bound([month, year], [month, year]))
+    } catch (e) {
+      req = store.getAll()
+    }
     req.onsuccess = () => {
       const all = req.result || []
-      const filtered = all.filter(r =>
-        r.month === Number(month) && r.year === Number(year)
-      ).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))
-      resolve(filtered)
+      if (req.source.indexName === 'monthYear') {
+        all.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))
+      } else {
+        const filtered = all.filter(r => r.month === month && r.year === year)
+          .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))
+        resolve(filtered)
+        return
+      }
+      resolve(all)
     }
     req.onerror = () => reject(req.error)
   })
 }
 
 export async function deleteTransaction(id) {
-  const os = await tx('readwrite')
+  const { store } = await tx('readwrite')
   return new Promise((resolve, reject) => {
-    const req = os.delete(Number(id))
+    const req = store.delete(Number(id))
     req.onsuccess = () => resolve(true)
     req.onerror = () => reject(req.error)
   })
 }
 
 export async function getAllTransactions() {
-  const os = await tx('readonly')
+  const { store } = await tx('readonly')
   return new Promise((resolve, reject) => {
-    const req = os.getAll()
+    const req = store.getAll()
     req.onsuccess = () => resolve((req.result || []).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0)))
     req.onerror = () => reject(req.error)
   })
 }
 
+// Share one in-flight rates request between concurrent calls (getSummary + getCategories).
+const inflightRates = {}
+function getRatesShared(targetCurrency) {
+  if (!inflightRates[targetCurrency]) {
+    inflightRates[targetCurrency] = getRates(targetCurrency)
+      .catch(err => { delete inflightRates[targetCurrency]; throw err })
+    inflightRates[targetCurrency].finally(() => {
+      if (inflightRates[targetCurrency]) delete inflightRates[targetCurrency]
+    })
+  }
+  return inflightRates[targetCurrency]
+}
+
+async function loadRates(targetCurrency) {
+  try {
+    const data = await getRatesShared(targetCurrency)
+    return data.rates || {}
+  } catch (e) {
+    console.warn(`Failed to fetch rates for ${targetCurrency}:`, e)
+    return {}
+  }
+}
+
+function toTargetAmount(amount, txCurrency, targetCurrency, rates) {
+  let amountInTarget = Math.abs(amount)
+  if (txCurrency !== targetCurrency) {
+    const rateToTx = rates[txCurrency]
+    if (rateToTx && rateToTx > 0) {
+      amountInTarget = amountInTarget / rateToTx
+    }
+  }
+  return amountInTarget
+}
+
 export async function getSummary(month, year, targetCurrency = 'INR') {
   const list = await getTransactions(month, year)
+  const rates = await loadRates(targetCurrency)
+
   let income = 0, expense = 0
-
-  let rates = {}
-  try {
-    const rateData = await getRates(targetCurrency)
-    rates = rateData.rates || {}
-  } catch (e) {
-    console.warn(`Failed to fetch rates for summary in ${targetCurrency}:`, e)
-  }
-
   for (const r of list) {
-    let amountInTarget = Math.abs(r.amount)
-    const txCurrency = r.currency || 'INR'
-
-    if (txCurrency !== targetCurrency) {
-      const rateToTx = rates[txCurrency]
-      if (rateToTx && rateToTx > 0) {
-        amountInTarget = amountInTarget / rateToTx
-      }
-    }
-
-    if (r.amount > 0) {
-      income += amountInTarget
-    } else {
-      expense += amountInTarget
-    }
+    const amountInTarget = toTargetAmount(r.amount, r.currency || 'INR', targetCurrency, rates)
+    if (r.amount > 0) income += amountInTarget
+    else expense += amountInTarget
   }
 
   const balance = income - expense
@@ -132,28 +198,12 @@ export async function getSummary(month, year, targetCurrency = 'INR') {
 
 export async function getCategories(month, year, targetCurrency = 'INR') {
   const list = await getTransactions(month, year)
-
-  let rates = {}
-  try {
-    const rateData = await getRates(targetCurrency)
-    rates = rateData.rates || {}
-  } catch (e) {
-    console.warn(`Failed to fetch rates for categories in ${targetCurrency}:`, e)
-  }
+  const rates = await loadRates(targetCurrency)
 
   const map = new Map()
   for (const r of list) {
     if (r.amount < 0) {
-      let amountInTarget = Math.abs(r.amount)
-      const txCurrency = r.currency || 'INR'
-
-      if (txCurrency !== targetCurrency) {
-        const rateToTx = rates[txCurrency]
-        if (rateToTx && rateToTx > 0) {
-          amountInTarget = amountInTarget / rateToTx
-        }
-      }
-
+      const amountInTarget = toTargetAmount(r.amount, r.currency || 'INR', targetCurrency, rates)
       map.set(r.category, (map.get(r.category) || 0) + amountInTarget)
     }
   }
@@ -174,7 +224,6 @@ export async function importJSON(jsonText) {
   for (const r of arr) {
     try {
       const { id, ...rest } = r
-      if (rest.createdAt) rest.createdAt = rest.createdAt
       await addTransaction(rest)
       imported++
     } catch (e) {
@@ -185,9 +234,9 @@ export async function importJSON(jsonText) {
 }
 
 export async function clearAll() {
-  const os = await tx('readwrite')
+  const { store } = await tx('readwrite')
   return new Promise((resolve, reject) => {
-    const req = os.clear()
+    const req = store.clear()
     req.onsuccess = () => resolve(true)
     req.onerror = () => reject(req.error)
   })

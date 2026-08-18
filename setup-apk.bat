@@ -24,7 +24,7 @@ if %errorlevel% neq 0 (
     pause
     exit /b 1
 ) else (
-    echo [1/3] Java JDK found ✓
+    echo [1/3] Java JDK found ?
 )
 
 REM Check if Android SDK exists
@@ -47,7 +47,7 @@ if not defined ANDROID_HOME (
     )
 )
 
-echo [2/3] Android SDK found ✓
+echo [2/3] Android SDK found ?
 
 echo.
 echo [3/3] Installing SDK packages...

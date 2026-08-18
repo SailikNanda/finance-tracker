@@ -1,9 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { KeyIcon, SaveIcon, TrashIcon, EyeIcon, EyeOffIcon, CheckIcon, SearchIcon, DownloadIcon, UploadIcon, ZapIcon } from './Icons'
+import { KeyIcon, SaveIcon, TrashIcon, EyeIcon, EyeOffIcon, CheckIcon, SearchIcon, DownloadIcon, UploadIcon, ZapIcon, RefreshIcon } from './Icons'
 import { getGroqKey, setGroqKey, hasGroqKey, testConnection as testGroq } from '../utils/groq'
 import { getTavilyKey, setTavilyKey, hasTavilyKey, testConnection as testTavily } from '../utils/tavily'
 import * as db from '../utils/db'
+import { APP_VERSION } from '../utils/version'
+import { checkForUpdates, formatSize, getCurrentVersion } from '../utils/updates'
+import { canDownloadInApp, downloadApk, pollDownload, installApk } from '../utils/apkUpdater'
+import { exportTransactionsPDF } from '../utils/pdfExport'
 
 function Settings({ currency, currencies, onCurrencyChange, refreshData }) {
   return (
@@ -77,12 +81,14 @@ function Settings({ currency, currencies, onCurrencyChange, refreshData }) {
         placeholder="tvly-xxxxxxxxxxxxxxxxxxxxxxxx"
       />
 
-      <DataCard refreshData={refreshData} />
+      <DataCard refreshData={refreshData} currency={currency} />
+
+      <UpdateCard />
 
       <div className="settings-card about-card">
         <div className="about-info">
           <h3>About</h3>
-          <p className="about-version">Finera <span>v1.3.0</span></p>
+          <p className="about-version">Finera <span>v{APP_VERSION}</span></p>
           <p className="about-tagline">Track income and expenses with AI-powered insights and real-time rates. Data stays on your phone.</p>
           <div className="tech-stack">
             <span className="tech-pill">React</span>
@@ -290,7 +296,7 @@ function ApiKeyCard({ title, description, helpUrl, helpSteps, icon, iconClass, g
   )
 }
 
-function DataCard({ refreshData }) {
+function DataCard({ refreshData, currency }) {
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState(null)
   const fileRef = useRef(null)
@@ -309,6 +315,20 @@ function DataCard({ refreshData }) {
       setMsg({ kind: 'ok', text: 'Backup downloaded' })
     } catch (e) { setMsg({ kind: 'err', text: e.message }) }
     finally { setBusy(false); setTimeout(() => setMsg(null), 3000) }
+  }
+
+  const handleExportPDF = async () => {
+    setBusy(true)
+    try {
+      const res = await exportTransactionsPDF(currency)
+      setMsg({
+        kind: 'ok',
+        text: res.saved === 'downloads'
+          ? `${res.fileName} saved to Downloads`
+          : `PDF downloaded (${res.count} transactions)`,
+      })
+    } catch (e) { setMsg({ kind: 'err', text: e.message || 'PDF export failed' }) }
+    finally { setBusy(false); setTimeout(() => setMsg(null), 4000) }
   }
 
   const handleImport = async (e) => {
@@ -350,9 +370,12 @@ function DataCard({ refreshData }) {
         </h3>
       </div>
       <p className="settings-desc">
-        Your data lives on this phone only. Export a backup file you can save anywhere, or import one to restore.
+        Export a PDF report (date, time, amount — like a spreadsheet) or a JSON backup file you can restore later.
       </p>
       <div className="button-group">
+        <motion.button type="button" className="update-btn update-btn--sm" onClick={handleExportPDF} disabled={busy} whileTap={{ scale: 0.95 }}>
+          <DownloadIcon /> <span>Export PDF</span>
+        </motion.button>
         <motion.button type="button" className="save-btn" onClick={handleExport} disabled={busy} whileTap={{ scale: 0.96 }}>
           <DownloadIcon /> <span>Export JSON</span>
         </motion.button>
@@ -364,6 +387,159 @@ function DataCard({ refreshData }) {
         </motion.button>
         <input ref={fileRef} type="file" accept="application/json" onChange={handleImport} style={{ display: 'none' }} />
       </div>
+      <AnimatePresence>
+        {msg && (
+          <motion.div
+            key={msg.text}
+            className={msg.kind === 'ok' ? 'success-message' : 'error-message'}
+            role="status"
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+          >
+            {msg.text}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  )
+}
+
+function UpdateCard() {
+  const [status, setStatus] = useState('checking')
+  const [info, setInfo] = useState(null)
+  const [downloading, setDownloading] = useState(false)
+  const [progress, setProgress] = useState(null)
+  const [filePath, setFilePath] = useState('')
+  const [installing, setInstalling] = useState(false)
+  const [msg, setMsg] = useState(null)
+
+  const check = async (force = false) => {
+    setStatus('checking')
+    const result = await checkForUpdates({ force })
+    setInfo(result)
+    if (result.updateAvailable) setStatus('available')
+    else if (result.reason === 'error') setStatus('error')
+    else setStatus('uptodate')
+  }
+
+  useEffect(() => { check() }, [])
+
+  const handleDownload = async () => {
+    if (!info || !info.url || downloading) return
+    setDownloading(true)
+    setProgress(0)
+    setMsg(null)
+    try {
+      const { downloadId, filePath: fp } = await downloadApk(info.url)
+      setFilePath(fp)
+      await pollDownload(downloadId, (st) => {
+        const pct = st.totalSize > 0 ? Math.round((st.bytesDownloaded / st.totalSize) * 100) : null
+        setProgress(pct)
+      })
+      setDownloading(false)
+      setInstalling(true)
+      await installApk(fp)
+      setMsg({ kind: 'ok', text: 'Installer opened. Tap "Install" to finish the update.' })
+      setInstalling(false)
+    } catch (e) {
+      setDownloading(false)
+      setInstalling(false)
+      setMsg({ kind: 'err', text: e.message || 'Update failed' })
+    }
+  }
+
+  const badgeClass = status === 'available' ? 'active' : status === 'error' ? 'missing' : 'checking'
+
+  return (
+    <div className="settings-card">
+      <div className="settings-header">
+        <h3>
+          <span className="settings-icon settings-icon--data">
+            <DownloadIcon />
+          </span>
+          App update
+        </h3>
+        <span className={`status-badge ${badgeClass}`}>
+          {status === 'available' && `v${info.latestVersion} ready`}
+          {status === 'uptodate' && 'Up to date'}
+          {status === 'checking' && 'Checking'}
+          {status === 'error' && 'Check failed'}
+        </span>
+      </div>
+
+      <p className="settings-desc">
+        {status === 'available'
+          ? `A new version (v${info.latestVersion}) is available. You are on v${info.currentVersion}. Tap below to download and install it. Your data is kept during the update.`
+          : status === 'uptodate'
+            ? `You are on the latest version (v${info.currentVersion}). New releases are checked from GitHub automatically.`
+            : status === 'error'
+              ? 'Could not reach GitHub right now. Check your internet connection and try again.'
+              : 'Checking for updates...'}
+      </p>
+
+      <AnimatePresence>
+        {status === 'available' && !downloading && !installing && (
+          <motion.div
+            className="button-group"
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            style={{ overflow: 'hidden' }}
+          >
+            <motion.button
+              type="button"
+              className="update-btn"
+              onClick={handleDownload}
+              whileTap={{ scale: 0.95 }}
+              whileHover={{ y: -2 }}
+            >
+              <svg className="update-btn__icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                <polyline points="7 10 12 15 17 10" />
+                <line x1="12" y1="15" x2="12" y2="3" />
+              </svg>
+              <span>
+                Update now
+                {info?.size ? `  \u00B7 ${formatSize(info.size)}` : ''}
+              </span>
+            </motion.button>
+            <motion.button type="button" className="update-btn update-btn--ghost" onClick={() => check(true)} disabled={status === 'checking'} whileTap={{ scale: 0.96 }}>
+              <RefreshIcon />
+              <span>Check again</span>
+            </motion.button>
+          </motion.div>
+        )}
+        {status !== 'available' && status !== 'checking' && (
+          <motion.button
+            type="button"
+            className="update-btn update-btn--ghost"
+            onClick={() => check(true)}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            whileTap={{ scale: 0.96 }}
+          >
+            <RefreshIcon />
+            <span>Check for updates</span>
+          </motion.button>
+        )}
+      </AnimatePresence>
+
+      {downloading && (
+        <div className="update-progress">
+          <div className="progress-track">
+            <motion.div
+              className="progress-fill"
+              animate={{ width: progress != null ? `${progress}%` : '40%' }}
+              transition={{ duration: 0.4 }}
+            />
+          </div>
+          <span className="update-progress-label">
+            {progress != null ? `Downloading... ${progress}%` : 'Downloading...'}
+          </span>
+        </div>
+      )}
+
       <AnimatePresence>
         {msg && (
           <motion.div

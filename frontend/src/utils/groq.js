@@ -3,9 +3,14 @@ import { getTavilyKey } from './tavily'
 // No backend proxy. API key stored in localStorage on phone.
 
 const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions'
-const MODEL = 'llama-3.3-70b-versatile'
+const MODELS = [
+  'qwen/qwen3.6-27b',
+  'llama-3.3-70b-versatile',
+]
 
 const KEY_STORAGE = 'ft_groq_api_key'
+let activeModel = MODELS[0]
+const MODEL = () => activeModel
 
 function cleanKey(k) {
   return String(k || '').replace(/[\s\u200B-\u200D\uFEFF]/g, '').trim()
@@ -38,7 +43,7 @@ export async function testConnection() {
         'Authorization': `Bearer ${key}`,
       },
       body: JSON.stringify({
-        model: MODEL,
+        model: MODEL(),
         messages: [{ role: 'user', content: 'Reply with one short word: ok' }],
         max_tokens: 10,
         temperature: 0,
@@ -58,9 +63,12 @@ export async function testConnection() {
   }
 }
 
-async function callGroq(prompt) {
+async function groqRequest(prompt, messages) {
   const key = getGroqKey()
   if (!key) throw new Error('Add a Groq API key in Settings to unlock live AI.')
+  const body = messages
+    ? { model: MODEL(), messages, temperature: 0.5, max_tokens: 1024 }
+    : { model: MODEL(), messages: [{ role: 'user', content: prompt }], temperature: 0.7, max_tokens: 1024 }
   let res
   try {
     res = await fetch(GROQ_URL, {
@@ -69,12 +77,7 @@ async function callGroq(prompt) {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${key}`,
       },
-      body: JSON.stringify({
-        model: MODEL,
-        messages: [{ role: 'user', content: prompt }],
-        temperature: 0.7,
-        max_tokens: 1024,
-      }),
+      body: JSON.stringify(body),
     })
   } catch (e) {
     if (e.name === 'TypeError') throw new Error('No internet. Check your connection.')
@@ -85,10 +88,69 @@ async function callGroq(prompt) {
   if (res.status === 402) throw new Error('Groq credits exhausted.')
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))
-    throw new Error(err.error?.message || `Groq HTTP ${res.status}`)
+    const msg = err.error?.message || `Groq HTTP ${res.status}`
+    const e = new Error(msg)
+    e.status = res.status
+    throw e
   }
   const data = await res.json()
-  return data.choices?.[0]?.message?.content || ''
+  const msg = data.choices?.[0]?.message || {}
+  // Reasoning models (e.g. Qwen) return thinking in `reasoning_content`.
+  // We only want the final answer, never the thinking trace.
+  const content = String(msg.content || '').trim()
+  const reasoning = String(msg.reasoning_content || '').trim()
+  if (!content && reasoning) return ''
+  return stripThinking(content)
+}
+
+// Remove any embedded thinking blocks that may leak into content.
+function stripThinking(text) {
+  return String(text)
+    .replace(/<thinking>[\s\S]*?<\/thinking>/g, '')
+    .replace(/```thinking[\s\S]*?```/g, '')
+    .replace(/^thinking:\s*[\s\S]*?\n{2,}/i, '')
+    .trim()
+}
+
+async function callGroq(prompt) {
+  try {
+    return await groqRequest(prompt, null)
+  } catch (e) {
+    // Model not found or unavailable -> fall back to the next model in the list.
+    const modelIssues = e.status === 404 || e.status === 400
+      || /model/i.test(e.message || '') || /not found/i.test(e.message || '')
+    if (modelIssues && activeModel !== MODELS[MODELS.length - 1]) {
+      const idx = MODELS.indexOf(activeModel)
+      activeModel = MODELS[idx + 1]
+      try {
+        return await groqRequest(prompt, null)
+      } catch (e2) {
+        activeModel = MODELS[0]
+        throw e2
+      }
+    }
+    throw e
+  }
+}
+
+async function callGroqChat(messages) {
+  try {
+    return await groqRequest(null, messages)
+  } catch (e) {
+    const modelIssues = e.status === 404 || e.status === 400
+      || /model/i.test(e.message || '') || /not found/i.test(e.message || '')
+    if (modelIssues && activeModel !== MODELS[MODELS.length - 1]) {
+      const idx = MODELS.indexOf(activeModel)
+      activeModel = MODELS[idx + 1]
+      try {
+        return await groqRequest(null, messages)
+      } catch (e2) {
+        activeModel = MODELS[0]
+        throw e2
+      }
+    }
+    throw e
+  }
 }
 
 const FALLBACK_INSIGHTS = `MONTHLY FINANCIAL REPORT
@@ -190,7 +252,7 @@ Keep total response under 350 words.`
     },
     ai_configured: hasGroqKey(),
     provider: 'groq',
-    model: hasGroqKey() ? MODEL : '',
+    model: hasGroqKey() ? MODEL() : '',
   }
 }
 
@@ -234,7 +296,7 @@ Keep total response under 350 words.`
     average_expense: avg(monthlyData.map(d => d.expense)),
     ai_configured: hasGroqKey(),
     provider: 'groq',
-    model: hasGroqKey() ? MODEL : '',
+    model: hasGroqKey() ? MODEL() : '',
   }
 }
 
@@ -297,33 +359,5 @@ Your instructions:
     })
   ]
 
-  let res
-  try {
-    res = await fetch(GROQ_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${groqKey}`,
-      },
-      body: JSON.stringify({
-        model: MODEL,
-        messages: formattedMessages,
-        temperature: 0.5,
-        max_tokens: 1024,
-      }),
-    })
-  } catch (e) {
-    if (e.name === 'TypeError') throw new Error('No internet connection.')
-    throw e
-  }
-
-  if (res.status === 401) throw new Error('Groq API key is invalid.')
-  if (res.status === 429) throw new Error('Groq rate limit. Try again in a moment.')
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}))
-    throw new Error(err.error?.message || `Groq error ${res.status}`)
-  }
-
-  const responseData = await res.json()
-  return responseData.choices?.[0]?.message?.content || ''
+  return callGroqChat(formattedMessages)
 }
