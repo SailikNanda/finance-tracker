@@ -95,29 +95,39 @@ async function groqRequest(prompt, messages) {
   }
   const data = await res.json()
   const msg = data.choices?.[0]?.message || {}
-  // Reasoning models (e.g. Qwen) return thinking in `reasoning_content`.
-  // We only want the final answer, never the thinking trace.
   const content = String(msg.content || '').trim()
   const reasoning = String(msg.reasoning_content || '').trim()
+  // Reasoning model returned only thinking — no usable answer.
   if (!content && reasoning) return ''
   let result = stripThinking(content)
-  // If reasoning exists, the content may still contain leaked thinking fragments.
-  // Apply a stricter filter: drop content that is mostly short/repetitive filler.
-  if (reasoning && result.split(/\s+/).length < 8) return ''
+  // If reasoning exists, content likely contains leaked thinking fragments.
+  // Drop short leftover text that is almost certainly not a real answer.
+  if (reasoning && result.split(/\s+/).length < 12) return ''
   return result
 }
 
 // Remove any embedded thinking blocks that may leak into content.
 function stripThinking(text) {
-  return String(text)
-    .replace(/<thinking>[\s\S]*?<\/thinking>/g, '')
-    .replace(/<\/?think>/g, '')
-    .replace(/```thinking[\s\S]*?```/g, '')
-    .replace(/^thinking:\s*[\s\S]*?\n{2,}/im, '')
-    .replace(/^\s*Let me (think|consider|analyze|break down)[\s\S]*?\n{2,}/im, '')
-    .replace(/^\s*Okay[\s,]+let me[\s\S]*?\n{2,}/im, '')
-    .replace(/^\s*First[\s,]+I (need|should|must) to[\s\S]*?\n{2,}/im, '')
-    .trim()
+  let s = String(text)
+  // XML-style thinking tags (various forms)
+  s = s.replace(/<think>[\s\S]*?<\/think>/gi, '')
+  s = s.replace(/<thinking>[\s\S]*?<\/thinking>/gi, '')
+  s = s.replace(/<\/?think>/gi, '')
+  // Markdown code-block thinking
+  s = s.replace(/```thinking[\s\S]*?```/gi, '')
+  s = s.replace(/```\s*think[\s\S]*?```/gi, '')
+  // "thinking:" prefix followed by a double-newline block
+  s = s.replace(/^thinking:\s*[\s\S]*?\n{2,}/im, '')
+  // Common Qwen thinking openers followed by reasoning blocks
+  s = s.replace(/^\s*(Okay|Alright|Ok)[\s,]+let me\s+[\s\S]*?\n{2,}/im, '')
+  s = s.replace(/^\s*Let me\s+(think|consider|analyze|break down|review|examine|look at|go through|work through|reason through|process)[\s\S]*?\n{2,}/im, '')
+  s = s.replace(/^\s*First[\s,]+I\s+(need|should|must|will|have to)\s+[\s\S]*?\n{2,}/im, '')
+  s = s.replace(/^\s*(I need to|I should|I must|I will|Let me|My approach)[\s\S]*?\n{2,}/im, '')
+  // Strip leading/thought lines that Qwen leaks before the real answer
+  s = s.replace(/^\s*(The user|The question|Looking at|Based on|From the)[\s\S]*?\n{2,}/im, '')
+  // Clean up orphaned newlines left behind
+  s = s.replace(/\n{3,}/g, '\n\n').trim()
+  return s
 }
 
 async function callGroq(prompt) {
@@ -216,7 +226,7 @@ export async function getFinancialInsights(currentMonth, previousMonth, month, y
     .map(([k, v]) => `\u2022 ${k}: ${Number(v).toFixed(2)}`)
     .join('\n') || 'No expenses recorded yet'
 
-  const prompt = `You are a professional financial advisor. Write a concise monthly financial report for ${MONTHS[month]} ${year} based on the data below. Do not use emojis, exclamation marks, or marketing language. Use a calm, analytical tone. Format as plain text with these sections:
+  const prompt = `You are a professional financial advisor. Write a concise monthly financial report for ${MONTHS[month]} ${year} based on the data below. Do not use emojis, exclamation marks, or marketing language. Use a calm, analytical tone. Do NOT include any thinking, reasoning, or chain-of-thought — output ONLY the final formatted report. Format as plain text with these sections:
 
 OVERVIEW
 - One short paragraph summarizing the month's financial position.
@@ -269,7 +279,7 @@ export async function getSavingsSuggestions(monthlyData) {
     `\u2022 Month ${d.month}/${d.year}: Income ${d.income.toFixed(2)}, Expenses ${d.expense.toFixed(2)}, Saved ${(d.income - d.expense).toFixed(2)}`
   ).join('\n')
 
-  const prompt = `You are a professional financial advisor. Write a personalized savings plan based on the data below. Do not use emojis, exclamation marks, or marketing language. Use a calm, analytical tone. Format as plain text with these sections:
+  const prompt = `You are a professional financial advisor. Write a personalized savings plan based on the data below. Do not use emojis, exclamation marks, or marketing language. Use a calm, analytical tone. Do NOT include any thinking, reasoning, or chain-of-thought — output ONLY the final formatted plan. Format as plain text with these sections:
 
 TREND ANALYSIS
 - Two to three short observations about the income and expense trends.
@@ -322,6 +332,8 @@ Your instructions:
 3. You can converse in any language the user speaks.
 4. Keep your answers concise, practical, and highly professional.
 5. If the user's query requires current real-time financial information (like interest rates, stock prices, exchange rates, banking news, today's rates, latest updates), utilize the provided search context. If no search context is provided or it doesn't answer the question, state that you don't have real-time access for it.
+6. Do NOT include any thinking, reasoning, or chain-of-thought in your response. Output ONLY the final answer.
+7. For simple greetings (hi, hello, hey), reply with a brief professional greeting and offer to help with financial questions.
 `
 
   // Decide if we should do a web search using Tavily.
