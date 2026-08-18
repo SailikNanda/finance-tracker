@@ -30,7 +30,10 @@ if errorlevel 1 (
   exit /b 1
 )
 
-echo.
+echo [0/5] Checking version against GitHub (must be higher than the latest release)...
+powershell -NoProfile -ExecutionPolicy Bypass -File "check-version.ps1" -Version "%VERSION%"
+if errorlevel 1 goto :fail
+
 echo [1/5] Updating version to %VERSION% everywhere...
 powershell -NoProfile -ExecutionPolicy Bypass -File "release-tools.ps1" -Version "%VERSION%"
 if errorlevel 1 goto :fail
