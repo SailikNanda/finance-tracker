@@ -823,6 +823,7 @@ body {
   border: 1px solid var(--border);
   border-radius: 18px;
   padding: 18px; margin-bottom: 14px;
+  overflow: hidden;
 }
 .settings-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
 .settings-header h3 { font-size: 14px; font-weight: 600; display: flex; align-items: center; gap: 10px; }
@@ -1034,6 +1035,8 @@ body {
 .toggle-visibility:hover { color: var(--text); background: rgba(255, 255, 255, 0.05); }
 
 .button-group { display: flex; gap: 10px; flex-wrap: wrap; }
+.button-group--column { flex-direction: column; }
+.button-group--column .update-btn { width: 100%; }
 .save-btn {
   flex: 1; min-width: 0; padding: 13px;
   border: none; border-radius: 12px;

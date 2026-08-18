@@ -407,6 +407,7 @@ function DataCard({ refreshData, currency }) {
 
 function UpdateCard() {
   const [status, setStatus] = useState('checking')
+  const [checking, setChecking] = useState(false)
   const [info, setInfo] = useState(null)
   const [downloading, setDownloading] = useState(false)
   const [progress, setProgress] = useState(null)
@@ -415,12 +416,21 @@ function UpdateCard() {
   const [msg, setMsg] = useState(null)
 
   const check = async (force = false) => {
-    setStatus('checking')
+    if (checking) return
+    setChecking(true)
+    const prevInfo = info
+    if (!prevInfo) setStatus('checking')
     const result = await checkForUpdates({ force })
     setInfo(result)
+    setChecking(false)
     if (result.updateAvailable) setStatus('available')
-    else if (result.reason === 'error') setStatus('error')
-    else setStatus('uptodate')
+    else if (result.reason === 'error') {
+      if (prevInfo?.updateAvailable) {
+        setMsg({ kind: 'err', text: 'Re-check failed, but an update is still available.' })
+      } else {
+        setStatus('error')
+      }
+    } else setStatus('uptodate')
   }
 
   useEffect(() => { check() }, [])
@@ -481,7 +491,7 @@ function UpdateCard() {
       <AnimatePresence>
         {status === 'available' && !downloading && !installing && (
           <motion.div
-            className="button-group"
+            className="button-group button-group--column"
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
@@ -492,7 +502,6 @@ function UpdateCard() {
               className="update-btn"
               onClick={handleDownload}
               whileTap={{ scale: 0.95 }}
-              whileHover={{ y: -2 }}
             >
               <svg className="update-btn__icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
@@ -504,9 +513,9 @@ function UpdateCard() {
                 {info?.size ? `  \u00B7 ${formatSize(info.size)}` : ''}
               </span>
             </motion.button>
-            <motion.button type="button" className="update-btn update-btn--ghost" onClick={() => check(true)} disabled={status === 'checking'} whileTap={{ scale: 0.96 }}>
+            <motion.button type="button" className="update-btn update-btn--ghost" onClick={() => check(true)} disabled={checking} whileTap={{ scale: 0.96 }}>
               <RefreshIcon />
-              <span>Check again</span>
+              <span>{checking ? 'Checking...' : 'Check again'}</span>
             </motion.button>
           </motion.div>
         )}
@@ -515,12 +524,13 @@ function UpdateCard() {
             type="button"
             className="update-btn update-btn--ghost"
             onClick={() => check(true)}
+            disabled={checking}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             whileTap={{ scale: 0.96 }}
           >
             <RefreshIcon />
-            <span>Check for updates</span>
+            <span>{checking ? 'Checking...' : 'Check for updates'}</span>
           </motion.button>
         )}
       </AnimatePresence>
