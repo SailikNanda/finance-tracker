@@ -215,9 +215,7 @@ body {
   display: flex; justify-content: space-around; align-items: center;
   padding: 10px 14px;
   padding-bottom: max(10px, env(safe-area-inset-bottom));
-  background: rgba(7, 7, 13, 0.78);
-  backdrop-filter: blur(30px) saturate(160%);
-  -webkit-backdrop-filter: blur(30px) saturate(160%);
+  background: rgba(7, 7, 13, 0.95);
   border-top: 1px solid var(--border);
   z-index: 100;
 }
@@ -511,6 +509,14 @@ body {
   border: 1px solid rgba(52, 211, 153, 0.3);
   color: var(--green);
 }
+.success-check-circle {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  background: rgba(52, 211, 153, 0.25);
+  display: grid; place-items: center;
+  flex-shrink: 0;
+}
+.success-check-circle svg { width: 16px; height: 16px; }
 .error-message {
   background: rgba(248, 113, 113, 0.1);
   border: 1px solid rgba(248, 113, 113, 0.3);
@@ -1037,7 +1043,7 @@ body {
 .toggle-visibility:hover { color: var(--text); background: rgba(255, 255, 255, 0.05); }
 
 .button-group { display: flex; gap: 10px; flex-wrap: wrap; }
-.button-group--column { flex-direction: column; }
+.button-group--column { flex-direction: column; gap: 10px; }
 .button-group--column .update-btn { width: 100%; }
 .save-btn {
   flex: 1; min-width: 0; padding: 13px;

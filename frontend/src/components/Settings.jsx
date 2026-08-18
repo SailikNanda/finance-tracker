@@ -315,7 +315,6 @@ function DataCard({ refreshData, currency }) {
   }
 
   const handleClear = async () => {
-    if (!confirm('Delete ALL transactions? This cannot be undone.')) return
     setBusy(true)
     try {
       await db.clearAll()

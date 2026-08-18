@@ -5,6 +5,7 @@ import { CATEGORY_ICONS } from './CategoryIcons'
 
 const CATEGORIES = {
   expense: [
+    { id: 'salary', label: 'Salary', full: 'Salary' },
     { id: 'food', label: 'Food', full: 'Food & Dining' },
     { id: 'transport', label: 'Transport', full: 'Transportation' },
     { id: 'shopping', label: 'Shopping', full: 'Shopping' },
@@ -190,14 +191,22 @@ function TransactionForm({ onSubmit, currency, symbol, currencies, initial, onCa
       <AnimatePresence>
         {success && (
           <motion.div
-            className="success-message"
+            className="success-message success-message--anim"
             role="status"
-            initial={{ opacity: 0, y: -10, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -10, scale: 0.95 }}
-            transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+            initial={{ opacity: 0, scale: 0.5 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.8, y: -20 }}
+            transition={{ type: 'spring', stiffness: 400, damping: 20 }}
           >
-            <CheckIcon /> Transaction added successfully
+            <motion.span
+              className="success-check-circle"
+              initial={{ scale: 0, rotate: -180 }}
+              animate={{ scale: 1, rotate: 0 }}
+              transition={{ type: 'spring', stiffness: 500, damping: 15, delay: 0.1 }}
+            >
+              <CheckIcon />
+            </motion.span>
+            <span>{type === 'expense' ? 'Expense' : 'Income'} added successfully!</span>
           </motion.div>
         )}
         {error && (
@@ -277,7 +286,6 @@ function TransactionForm({ onSubmit, currency, symbol, currencies, initial, onCa
             type="date"
             value={txDate}
             onChange={(e) => setTxDate(e.target.value)}
-            max={new Date().toISOString().slice(0, 10)}
             className="date-input"
           />
         </motion.div>

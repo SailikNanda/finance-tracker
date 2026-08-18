@@ -5,7 +5,6 @@ import { getTavilyKey } from './tavily'
 const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions'
 const MODELS = [
   'qwen/qwen3.6-27b',
-  'llama-3.3-70b-versatile',
 ]
 
 const KEY_STORAGE = 'ft_groq_api_key'
@@ -67,8 +66,8 @@ async function groqRequest(prompt, messages) {
   const key = getGroqKey()
   if (!key) throw new Error('Add a Groq API key in Settings to unlock live AI.')
   const body = messages
-    ? { model: MODEL(), messages, temperature: 0.5, max_tokens: 1024 }
-    : { model: MODEL(), messages: [{ role: 'user', content: prompt }], temperature: 0.7, max_tokens: 1024 }
+    ? { model: MODEL(), messages, temperature: 0.5, max_tokens: 1024, reasoning_format: 'hidden' }
+    : { model: MODEL(), messages: [{ role: 'user', content: prompt }], temperature: 0.7, max_tokens: 1024, reasoning_format: 'hidden' }
   let res
   try {
     res = await fetch(GROQ_URL, {
@@ -118,6 +117,8 @@ function stripThinking(text) {
   s = s.replace(/```\s*think[\s\S]*?```/gi, '')
   // "thinking:" prefix followed by a double-newline block
   s = s.replace(/^thinking:\s*[\s\S]*?\n{2,}/im, '')
+  // Qwen dumps "Here's a thinking process:" followed by numbered reasoning
+  s = s.replace(/^Here'?s?\s+a\s+thinking\s+process[\s\S]*$/im, '')
   // Common Qwen thinking openers followed by reasoning blocks
   s = s.replace(/^\s*(Okay|Alright|Ok)[\s,]+let me\s+[\s\S]*?\n{2,}/im, '')
   s = s.replace(/^\s*Let me\s+(think|consider|analyze|break down|review|examine|look at|go through|work through|reason through|process)[\s\S]*?\n{2,}/im, '')

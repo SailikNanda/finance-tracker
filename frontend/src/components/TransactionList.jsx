@@ -37,7 +37,6 @@ function TransactionList({ transactions, loading, symbol, currencies, onDelete, 
 
   const handleDelete = async (id) => {
     if (!onDelete) return
-    if (!confirm('Delete this transaction? This cannot be undone.')) return
     setPendingId(id)
     await onDelete(id)
     setPendingId(null)
