@@ -410,6 +410,7 @@ function UpdateCard() {
   const [checking, setChecking] = useState(false)
   const [info, setInfo] = useState(null)
   const [downloading, setDownloading] = useState(false)
+  const [downloaded, setDownloaded] = useState(false)
   const [progress, setProgress] = useState(null)
   const [filePath, setFilePath] = useState('')
   const [installing, setInstalling] = useState(false)
@@ -441,6 +442,18 @@ function UpdateCard() {
     setProgress(0)
     setMsg(null)
     try {
+      if (!canDownloadInApp()) {
+        const a = document.createElement('a')
+        a.href = info.url
+        a.download = `finera-${info.latestVersion}.apk`
+        document.body.appendChild(a)
+        a.click()
+        document.body.removeChild(a)
+        setDownloading(false)
+        setDownloaded(true)
+        setMsg({ kind: 'ok', text: 'Download started in your browser. Once it finishes in your Downloads folder, tap "Update now" to install it.' })
+        return
+      }
       const { downloadId, filePath: fp } = await downloadApk(info.url)
       setFilePath(fp)
       await pollDownload(downloadId, (st) => {
@@ -448,14 +461,29 @@ function UpdateCard() {
         setProgress(pct)
       })
       setDownloading(false)
-      setInstalling(true)
-      await installApk(fp)
-      setMsg({ kind: 'ok', text: 'Installer opened. Tap "Install" to finish the update.' })
-      setInstalling(false)
+      setDownloaded(true)
+      setMsg({ kind: 'ok', text: 'Download complete. Tap "Update now" to install the new version.' })
     } catch (e) {
       setDownloading(false)
+      setMsg({ kind: 'err', text: e.message || 'Download failed' })
+    }
+  }
+
+  const handleInstall = async () => {
+    if (!filePath || installing) return
+    if (!canDownloadInApp()) {
+      setMsg({ kind: 'ok', text: 'Open the downloaded APK from your Downloads folder to install it.' })
+      return
+    }
+    setInstalling(true)
+    setMsg(null)
+    try {
+      await installApk(filePath)
+      setMsg({ kind: 'ok', text: 'Installer opened. Tap "Install" to finish the update. The app will restart automatically.' })
+    } catch (e) {
+      setMsg({ kind: 'err', text: e.message || 'Install failed' })
+    } finally {
       setInstalling(false)
-      setMsg({ kind: 'err', text: e.message || 'Update failed' })
     }
   }
 
@@ -471,7 +499,9 @@ function UpdateCard() {
           App update
         </h3>
         <span className={`status-badge ${badgeClass}`}>
-          {status === 'available' && `v${info.latestVersion} ready`}
+          {status === 'available' && !downloading && !downloaded && `v${info.latestVersion} ready`}
+          {status === 'available' && downloading && 'Downloading'}
+          {status === 'available' && downloaded && 'Downloaded'}
           {status === 'uptodate' && 'Up to date'}
           {status === 'checking' && 'Checking'}
           {status === 'error' && 'Check failed'}
@@ -479,17 +509,19 @@ function UpdateCard() {
       </div>
 
       <p className="settings-desc">
-        {status === 'available'
-          ? `A new version (v${info.latestVersion}) is available. You are on v${info.currentVersion}. Tap below to download and install it. Your data is kept during the update.`
-          : status === 'uptodate'
-            ? `You are on the latest version (v${info.currentVersion}). New releases are checked from GitHub automatically.`
-            : status === 'error'
-              ? 'Could not reach GitHub right now. Check your internet connection and try again.'
-              : 'Checking for updates...'}
+        {status === 'available' && !downloading && !downloaded
+          ? `A new version (v${info.latestVersion}) is available. You are on v${info.currentVersion}. Tap below to download it. Your data is kept during the update.`
+          : status === 'available' && downloaded
+            ? `v${info.latestVersion} downloaded. Tap "Update now" below to install it. Your data is kept during the update.`
+            : status === 'uptodate'
+              ? `You are on the latest version (v${info.currentVersion}). New releases are checked from GitHub automatically.`
+              : status === 'error'
+                ? 'Could not reach GitHub right now. Check your internet connection and try again.'
+                : 'Checking for updates...'}
       </p>
 
       <AnimatePresence>
-        {status === 'available' && !downloading && !installing && (
+        {status === 'available' && !downloaded && !downloading && !installing && (
           <motion.div
             className="button-group button-group--column"
             initial={{ opacity: 0, height: 0 }}
@@ -519,6 +551,33 @@ function UpdateCard() {
             </motion.button>
           </motion.div>
         )}
+
+        {status === 'available' && downloaded && !downloading && !installing && (
+          <motion.div
+            className="button-group button-group--column"
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            style={{ overflow: 'hidden' }}
+          >
+            <motion.button
+              type="button"
+              className="update-btn"
+              onClick={handleInstall}
+              whileTap={{ scale: 0.95 }}
+            >
+              <svg className="update-btn__icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+              </svg>
+              <span>Update now</span>
+            </motion.button>
+            <motion.button type="button" className="update-btn update-btn--ghost" onClick={() => check(true)} disabled={checking} whileTap={{ scale: 0.96 }}>
+              <RefreshIcon />
+              <span>{checking ? 'Checking...' : 'Check again'}</span>
+            </motion.button>
+          </motion.div>
+        )}
+
         {status !== 'available' && status !== 'checking' && (
           <motion.button
             type="button"
