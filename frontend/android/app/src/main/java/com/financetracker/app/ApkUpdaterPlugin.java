@@ -58,7 +58,7 @@ public class ApkUpdaterPlugin extends Plugin {
             long id = dm.enqueue(request);
 
             JSObject ret = new JSObject();
-            ret.put("downloadId", id);
+            ret.put("downloadId", (int) id);
             ret.put("filePath", dest.getAbsolutePath());
             call.resolve(ret);
         } catch (Exception e) {
@@ -68,7 +68,14 @@ public class ApkUpdaterPlugin extends Plugin {
 
     @PluginMethod
     public void getDownloadStatus(PluginCall call) {
-        Long id = call.getLong("downloadId");
+        Long id = null;
+        try { id = call.getLong("downloadId"); } catch (Exception ignored) {}
+        if (id == null) {
+            try { Double d = call.getDouble("downloadId"); if (d != null) id = d.longValue(); } catch (Exception ignored) {}
+        }
+        if (id == null) {
+            try { Integer i = call.getInt("downloadId"); if (i != null) id = i.longValue(); } catch (Exception ignored) {}
+        }
         if (id == null) {
             call.reject("Missing downloadId");
             return;
