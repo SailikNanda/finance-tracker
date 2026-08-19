@@ -11,6 +11,10 @@ const KEY_STORAGE = 'ft_groq_api_key'
 let activeModel = MODELS[0]
 const MODEL = () => activeModel
 
+// Qwen3 on Groq: reasoning_effort 'none' truly disables thinking
+// (reasoning_format 'hidden' is kept as a safety net to never surface thinking text).
+const REQ_COMMON = { reasoning_effort: 'none', reasoning_format: 'hidden' }
+
 function cleanKey(k) {
   return String(k || '').replace(/[\s\u200B-\u200D\uFEFF]/g, '').trim()
 }
@@ -44,8 +48,9 @@ export async function testConnection() {
       body: JSON.stringify({
         model: MODEL(),
         messages: [{ role: 'user', content: 'Reply with one short word: ok' }],
-        max_tokens: 10,
+        max_completion_tokens: 10,
         temperature: 0,
+        ...REQ_COMMON,
       }),
     })
     if (res.status === 401) return { ok: false, message: 'Invalid Groq key (401).' }
@@ -66,8 +71,8 @@ async function groqRequest(prompt, messages) {
   const key = getGroqKey()
   if (!key) throw new Error('Add a Groq API key in Settings to unlock live AI.')
   const body = messages
-    ? { model: MODEL(), messages, temperature: 0.5, max_tokens: 1024, reasoning_format: 'hidden' }
-    : { model: MODEL(), messages: [{ role: 'user', content: prompt }], temperature: 0.7, max_tokens: 1024, reasoning_format: 'hidden' }
+    ? { model: MODEL(), messages, temperature: 0.5, max_completion_tokens: 2048, ...REQ_COMMON }
+    : { model: MODEL(), messages: [{ role: 'user', content: prompt }], temperature: 0.7, max_completion_tokens: 2048, ...REQ_COMMON }
   let res
   try {
     res = await fetch(GROQ_URL, {
@@ -95,18 +100,20 @@ async function groqRequest(prompt, messages) {
   const data = await res.json()
   const msg = data.choices?.[0]?.message || {}
   const content = String(msg.content || '').trim()
-  const reasoning = String(msg.reasoning_content || '').trim()
-  // Reasoning model returned only thinking — no usable answer.
-  if (!content && reasoning) return ''
+  if (!content) {
+    // Empty content (e.g. budget exhausted during thinking) must never render
+    // as a blank report — let the caller fall back to the built-in text.
+    throw new Error('The AI returned an empty response. Please try again.')
+  }
   let result = stripThinking(content)
-  // If reasoning exists, content likely contains leaked thinking fragments.
-  // Drop short leftover text that is almost certainly not a real answer.
-  if (reasoning && result.split(/\s+/).length < 12) return ''
-  // Double-check: if result still starts with a thinking phrase, strip leading lines
+  // Some Qwen3 responses separate the answer with a "final answer:" marker.
+  const finalAnswerIdx = result.search(/final\s+answer\s*[:：]/i)
+  if (finalAnswerIdx > 0) result = result.slice(finalAnswerIdx).replace(/final\s+answer\s*[:：]/i, '')
+  // If result still starts with a thinking phrase, strip leading lines
   if (/^\s*(Okay|Alright|Ok|Sure|Hmm|Well|Let me|I need|I should|I must|I will|First|The user|Looking at|Based on|To answer|To provide|My approach|Step\s*\d)/i.test(result)) {
     result = stripThinking(result)
   }
-  return result
+  return result.trim()
 }
 
 // Remove any embedded thinking blocks that may leak into content.
