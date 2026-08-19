@@ -71,6 +71,12 @@ function toDateInputValue(d) {
   return `${y}-${m}-${day}`
 }
 
+function toTimeInputValue(d) {
+  const dt = d ? new Date(d) : new Date()
+  if (Number.isNaN(dt.getTime())) return ''
+  return `${String(dt.getHours()).padStart(2, '0')}:${String(dt.getMinutes()).padStart(2, '0')}`
+}
+
 function TransactionForm({ onSubmit, currency, symbol, currencies, initial, onCancelEdit }) {
   const editing = !!initial
   const isIncomeTx = initial ? initial.amount > 0 : false
@@ -81,6 +87,7 @@ function TransactionForm({ onSubmit, currency, symbol, currencies, initial, onCa
   const [customCategory, setCustomCategory] = useState('')
   const [txCurrency, setTxCurrency] = useState(initial?.currency || currency)
   const [txDate, setTxDate] = useState(toDateInputValue(initial?.date))
+  const [txTime, setTxTime] = useState(toTimeInputValue(initial?.date))
   const [success, setSuccess] = useState(false)
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
@@ -102,7 +109,7 @@ function TransactionForm({ onSubmit, currency, symbol, currencies, initial, onCa
       setError('Enter a valid amount greater than 0')
       return
     }
-    const submittedDate = txDate ? new Date(`${txDate}T12:00:00`) : null
+    const submittedDate = txDate ? new Date(`${txDate}T${txTime || '12:00'}:00`) : new Date()
     setSubmitting(true)
     const result = await onSubmit({
       id: initial?.id,
@@ -111,7 +118,7 @@ function TransactionForm({ onSubmit, currency, symbol, currencies, initial, onCa
       category: finalCategory,
       type,
       currency: txCurrency,
-      date: submittedDate ? submittedDate.toISOString() : undefined,
+      date: submittedDate.toISOString(),
     })
     setSubmitting(false)
     if (result) {
@@ -120,6 +127,7 @@ function TransactionForm({ onSubmit, currency, symbol, currencies, initial, onCa
       setCategory('')
       setCustomCategory('')
       setTxDate('')
+      setTxTime(toTimeInputValue())
       setSuccess(true)
       setTimeout(() => setSuccess(false), 2400)
     } else {
@@ -279,15 +287,27 @@ function TransactionForm({ onSubmit, currency, symbol, currencies, initial, onCa
           </div>
         </motion.div>
 
-        <motion.div className="form-group" variants={itemVariants}>
-          <label htmlFor="tx-date">Date</label>
-          <input
-            id="tx-date"
-            type="date"
-            value={txDate}
-            onChange={(e) => setTxDate(e.target.value)}
-            className="date-input"
-          />
+        <motion.div className="form-row" variants={itemVariants}>
+          <div className="form-group">
+            <label htmlFor="tx-date">Date</label>
+            <input
+              id="tx-date"
+              type="date"
+              value={txDate}
+              onChange={(e) => setTxDate(e.target.value)}
+              className="date-input"
+            />
+          </div>
+          <div className="form-group">
+            <label htmlFor="tx-time">Time</label>
+            <input
+              id="tx-time"
+              type="time"
+              value={txTime}
+              onChange={(e) => setTxTime(e.target.value)}
+              className="date-input"
+            />
+          </div>
         </motion.div>
 
         <motion.div className="form-group" variants={itemVariants}>
