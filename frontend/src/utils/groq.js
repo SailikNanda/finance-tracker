@@ -102,31 +102,61 @@ async function groqRequest(prompt, messages) {
   // If reasoning exists, content likely contains leaked thinking fragments.
   // Drop short leftover text that is almost certainly not a real answer.
   if (reasoning && result.split(/\s+/).length < 12) return ''
+  // Double-check: if result still starts with a thinking phrase, strip leading lines
+  if (/^\s*(Okay|Alright|Ok|Sure|Hmm|Well|Let me|I need|I should|I must|I will|First|The user|Looking at|Based on|To answer|To provide|My approach|Step\s*\d)/i.test(result)) {
+    result = stripThinking(result)
+  }
   return result
 }
 
 // Remove any embedded thinking blocks that may leak into content.
 function stripThinking(text) {
   let s = String(text)
-  // XML-style thinking tags (various forms)
+
+  // ── Step 1: If the response contains <think>...</think>, keep ONLY what comes after </think> ──
+  const afterClose = s.replace(/[\s\S]*?<\/think>\s*/i, '')
+  if (afterClose.trim().length > 20) s = afterClose
+
+  // ── Step 2: Strip explicit thinking containers ──
   s = s.replace(/<think>[\s\S]*?<\/think>/gi, '')
   s = s.replace(/<thinking>[\s\S]*?<\/thinking>/gi, '')
   s = s.replace(/<\/?think>/gi, '')
-  // Markdown code-block thinking
   s = s.replace(/```thinking[\s\S]*?```/gi, '')
   s = s.replace(/```\s*think[\s\S]*?```/gi, '')
-  // "thinking:" prefix followed by a double-newline block
-  s = s.replace(/^thinking:\s*[\s\S]*?\n{2,}/im, '')
-  // Qwen dumps "Here's a thinking process:" followed by numbered reasoning
+
+  // ── Step 3: Strip Qwen-specific reasoning patterns ──
+  // "Here's a thinking process:" followed by numbered reasoning
   s = s.replace(/^Here'?s?\s+a\s+thinking\s+process[\s\S]*$/im, '')
-  // Common Qwen thinking openers followed by reasoning blocks
-  s = s.replace(/^\s*(Okay|Alright|Ok)[\s,]+let me\s+[\s\S]*?\n{2,}/im, '')
-  s = s.replace(/^\s*Let me\s+(think|consider|analyze|break down|review|examine|look at|go through|work through|reason through|process)[\s\S]*?\n{2,}/im, '')
-  s = s.replace(/^\s*First[\s,]+I\s+(need|should|must|will|have to)\s+[\s\S]*?\n{2,}/im, '')
-  s = s.replace(/^\s*(I need to|I should|I must|I will|Let me|My approach)[\s\S]*?\n{2,}/im, '')
-  // Strip leading/thought lines that Qwen leaks before the real answer
-  s = s.replace(/^\s*(The user|The question|Looking at|Based on|From the)[\s\S]*?\n{2,}/im, '')
-  // Clean up orphaned newlines left behind
+  // "thinking:" prefix
+  s = s.replace(/^thinking:\s*[\s\S]*?\n{2,}/im, '')
+
+  // ── Step 4: Strip common reasoning openers (greedy — consume everything until double-newline) ──
+  const openers = [
+    /^\s*(Okay|Alright|Ok|Sure|Hmm|Well|Let's see|Now)[\s,\.]+.{0,20}?\n{2,}/im,
+    /^\s*Let me\s+(think|consider|analyze|break down|review|examine|look at|go through|work through|reason through|process|start|begin|outline|structure|organize|plan|calculate|compute|determine|evaluate|assess|examine|compare|estimate|measure|figure out|work on|think about|look into|check|verify|validate|confirm|double.check)[\s\S]*?\n{2,}/im,
+    /^\s*First[\s,]+I\s+(need|should|must|will|have to|ought to)\s+[\s\S]*?\n{2,}/im,
+    /^\s*(I need to|I should|I must|I will|I'll|My approach|My plan|My strategy|To answer|To respond|To address|To provide|To give|To generate|To create|To write|To produce|To draft|To prepare|To formulate|To draft)[\s\S]*?\n{2,}/im,
+    /^\s*(The user|The question|Looking at|Based on|From the|Considering|Given the|Reviewing|Analyzing|Examining|Assessing|Evaluating)[\s\S]*?\n{2,}/im,
+    /^\s*(Step\s*\d|Phase\s*\d|Part\s*\d)[\s\S]*?\n{2,}/im,
+    /^\s*(To|For|In|On|At|With|From|By|As)[\s]+(?:this|the|a|an|my|your|our)\s+(?:question|request|query|problem|task|prompt|input)[\s\S]*?\n{2,}/im,
+  ]
+  for (const re of openers) s = s.replace(re, '')
+
+  // ── Step 5: If the first meaningful line looks like reasoning, drop it ──
+  const lines = s.split('\n')
+  let startIdx = 0
+  for (let i = 0; i < lines.length; i++) {
+    const l = lines[i].trim()
+    if (!l) { startIdx = i + 1; continue }
+    if (/^(Okay|Alright|Ok|Sure|Hmm|Well|Let me|I need|I should|I must|I will|First|The user|Looking at|Based on|To |For |In |On |Step|Phase|Part)\b/i.test(l)) {
+      startIdx = i + 1
+      continue
+    }
+    break
+  }
+  if (startIdx > 0) s = lines.slice(startIdx).join('\n')
+
+  // ── Step 6: Clean up orphaned newlines ──
   s = s.replace(/\n{3,}/g, '\n\n').trim()
   return s
 }
@@ -227,7 +257,7 @@ export async function getFinancialInsights(currentMonth, previousMonth, month, y
     .map(([k, v]) => `\u2022 ${k}: ${Number(v).toFixed(2)}`)
     .join('\n') || 'No expenses recorded yet'
 
-  const prompt = `You are a professional financial advisor. Write a concise monthly financial report for ${MONTHS[month]} ${year} based on the data below. Do not use emojis, exclamation marks, or marketing language. Use a calm, analytical tone. Do NOT include any thinking, reasoning, or chain-of-thought — output ONLY the final formatted report. Format as plain text with these sections:
+  const prompt = `You are a professional financial advisor. Write a concise monthly financial report for ${MONTHS[month]} ${year} based on the data below. Do not use emojis, exclamation marks, or marketing language. Use a calm, analytical tone. CRITICAL: Do NOT include any thinking, reasoning, chain-of-thought, "Let me", "I need to", "Step 1", or any preamble. Output ONLY the final formatted report starting directly with the section headings below. Format as plain text with these sections:
 
 OVERVIEW
 - One short paragraph summarizing the month's financial position.
@@ -280,7 +310,7 @@ export async function getSavingsSuggestions(monthlyData) {
     `\u2022 Month ${d.month}/${d.year}: Income ${d.income.toFixed(2)}, Expenses ${d.expense.toFixed(2)}, Saved ${(d.income - d.expense).toFixed(2)}`
   ).join('\n')
 
-  const prompt = `You are a professional financial advisor. Write a personalized savings plan based on the data below. Do not use emojis, exclamation marks, or marketing language. Use a calm, analytical tone. Do NOT include any thinking, reasoning, or chain-of-thought — output ONLY the final formatted plan. Format as plain text with these sections:
+  const prompt = `You are a professional financial advisor. Write a personalized savings plan based on the data below. Do not use emojis, exclamation marks, or marketing language. Use a calm, analytical tone. CRITICAL: Do NOT include any thinking, reasoning, chain-of-thought, "Let me", "I need to", "Step 1", or any preamble. Output ONLY the final formatted plan starting directly with the section headings below. Format as plain text with these sections:
 
 TREND ANALYSIS
 - Two to three short observations about the income and expense trends.
@@ -333,7 +363,7 @@ Your instructions:
 3. You can converse in any language the user speaks.
 4. Keep your answers concise, practical, and highly professional.
 5. If the user's query requires current real-time financial information (like interest rates, stock prices, exchange rates, banking news, today's rates, latest updates), utilize the provided search context. If no search context is provided or it doesn't answer the question, state that you don't have real-time access for it.
-6. Do NOT include any thinking, reasoning, or chain-of-thought in your response. Output ONLY the final answer.
+  6. Do NOT include any thinking, reasoning, chain-of-thought, "Let me", "I need to", or any preamble in your response. Output ONLY the final answer starting directly with the information requested.
 7. For simple greetings (hi, hello, hey), reply with a brief professional greeting and offer to help with financial questions.
 `
 
