@@ -1,110 +1,110 @@
-# Install Guide (Bangla)
+# Install Guide (English)
 
-## Pre-requisite (one-time, PC-te)
+## Pre-requisites (one-time, on your PC)
 
-Aapnar PC-te lagbe:
+You will need on your PC:
 - **Node.js 16+** - https://nodejs.org
 - **Java JDK 17** - https://adoptium.net
 - **Android SDK** - https://developer.android.com/studio#command-line-tools-only
 
-Sob install kore PC restart koro.
+Install everything, then restart your PC.
 
 ---
 
-## APK Banano (one-time, 5 minute)
+## Building the APK (one-time, ~5 minutes)
 
 ### Step 1: First build
-1. File Explorer-e jao `S:\Finance Tracker\finance-tracker\` folder-e
-2. `build-apk.bat` file-ta **double-click** koro
-3. Window khule automatic 4 ta kaj korbe (npm install, vite build, cap sync, gradle)
-4. 3-5 minute lagbe prothom bar (pore 30 second)
-5. Shesh-e message asbe: "APK location: ..."
+1. In File Explorer, go to the `S:\Finance Tracker\finance-tracker\` folder
+2. **Double-click** the `build-apk.bat` file
+3. A window opens and automatically does 4 tasks (npm install, vite build, cap sync, gradle)
+4. Takes 3-5 minutes the first time (30 seconds afterwards)
+5. At the end you'll see the message: "APK location: ..."
 
-APK pabe:
+You'll get the APK at:
 ```
 S:\Finance Tracker\finance-tracker\frontend\android\app\build\outputs\apk\debug\app-debug.apk
 ```
 
-### Step 2: Phone-e install
+### Step 2: Install on your phone
 
-**Option A: USB cable (shoje)**
-1. Phone-e USB cable diye PC-te connect koro
-2. Phone-e "USB Debugging" enable koro:
+**Option A: USB cable (easiest)**
+1. Connect your phone to the PC with a USB cable
+2. Enable "USB Debugging" on your phone:
    - Settings > About Phone > tap "Build Number" 7 times (developer mode on)
    - Settings > Developer Options > USB Debugging ON
-3. PC-te PowerShell-e:
+3. In PowerShell on your PC:
 ```powershell
 adb install "S:\Finance Tracker\finance-tracker\frontend\android\app\build\outputs\apk\debug\app-debug.apk"
 ```
 
-**Option B: Google Drive / Email (sohoj)**
-1. APK file Google Drive-e upload koro (ba email-e pathiye self)
-2. Phone-e Google Drive khola, APK file download koro
-3. File Manager-e APK file-e tap koro
-4. "Install" tap koro (Unknown Sources allow korte hobe)
+**Option B: Google Drive / Email (easy)**
+1. Upload the APK file to Google Drive (or email it to yourself)
+2. Open Google Drive on your phone and download the APK file
+3. Tap the APK file in your File Manager
+4. Tap "Install" (you may need to allow Unknown Sources)
 
-**Option C: Direct transfer (USB but no adb)**
-1. Phone-e USB cable diye PC-te connect koro
-2. "File Transfer" mode select koro phone-e
-3. PC-te phone-er storage dekhabe
-4. APK file copy koro phone-e
-5. Phone-e File Manager-e jao, APK tap kore install
+**Option C: Direct transfer (USB without adb)**
+1. Connect your phone to the PC with a USB cable
+2. Select "File Transfer" mode on your phone
+3. Your phone's storage will appear on the PC
+4. Copy the APK file to your phone
+5. Go to File Manager on your phone, tap the APK and install
 
-### Step 3: App open koro
-- Phone-e "Finera" app pabe
-- Tap kore open koro
-- AI Insights tab default-e open hobe
+### Step 3: Open the app
+- You'll find the "Finera" app on your phone
+- Tap to open it
+- The AI Insights tab opens by default
 
-### Step 4: API key add koro
-- More tab-e jao
-- Groq API key paste koro (console.groq.com theke free paben)
-- Tavily API key paste koro (tavily.com theke free paben, 1000/month)
-- Save chapo
+### Step 4: Add API keys
+- Go to the More tab
+- Paste your Groq API key (get it free at console.groq.com)
+- Paste your Tavily API key (get it free at tavily.com, 1000 searches/month)
+- Tap Save
 
 ---
 
-## Future-e update korte
+## Updating later
 
-Jodi code change kore (notun feature, bug fix):
+If you change the code (new feature, bug fix):
 
-1. `frontend/src/` e code edit koro
-2. `build-apk.bat` double-click koro (30 second)
-3. Notun APK same folder-e toiri hobe
-4. Phone-e sei APK install koro (purano ta replace hobe, **data safe thakbe**)
+1. Edit the code in `frontend/src/`
+2. Double-click `build-apk.bat` (30 seconds)
+3. A new APK is created in the same folder
+4. Install that APK on your phone (it replaces the old one, **your data is safe**)
 
 ---
 
 ## Common problems
 
 ### "Java not found"
-- JDK 17 install koro (adoptium.net theke)
-- PC restart koro
+- Install JDK 17 (from adoptium.net)
+- Restart your PC
 
 ### "SDK not found"
-- PowerShell-e:
+- In PowerShell:
 ```powershell
 [System.Environment]::SetEnvironmentVariable("ANDROID_HOME", "C:\Android\android-sdk", "User")
 ```
 
 ### "gradlew.bat not found"
-- `frontend\android` folder-e `gradlew.bat` thakbe. Na thakle `gradle wrapper` run koro sei folder-e.
+- `gradlew.bat` should be in the `frontend\android` folder. If not, run `gradle wrapper` in that folder.
 
 ### "Could not find tools.jar"
-- Java 8 use korcho, JDK 17 lagbe
+- You're using Java 8; JDK 17 is required
 
-### APK install hosse na phone-e
-- Settings > Security > Unknown Sources enable koro
-- Purano "Finera" app uninstall kore try koro
+### APK won't install on the phone
+- Settings > Security > Unknown Sources enable it
+- Uninstall the old "Finera" app and try again
 
-### App crash kore open korte gele
-- Phone-e Developer Options > USB Debugging ON kore PC connect koro
-- PC-te: `adb logcat | finera` (logs dekhabe)
+### App crashes when opening
+- Enable Developer Options > USB Debugging on your phone and connect to the PC
+- On the PC run: `adb logcat | finera` (shows the logs)
 
 ---
 
 ## Features
 
-- 15+ currency
+- 15+ currencies
 - Real-time day-to-day rates (Tavily)
 - AI insights (Groq)
 - Monthly summary

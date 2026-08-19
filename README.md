@@ -153,11 +153,9 @@ Keys are stored locally in the phone's localStorage. They are never sent to any 
 | File | Contents |
 |---|---|
 | **README.md** (this file) | Overview, quick start |
-| **[BANGLA.md](BANGLA.md)** | Bangla guide (v2.0) |
-| **[INSTALL.md](INSTALL.md)** | Detailed setup |
-| **[APK-BUILD-VSCODE.md](APK-BUILD-VSCODE.md)** | APK build details |
+| **[INSTALL.md](INSTALL.md)** | Detailed setup (in English) |
 
-The `backend/` folder is kept for reference. `BACKEND.md` and `TAVILY.md` are legacy reference documents.
+The `backend/` folder is kept for reference.
 
 ---
 

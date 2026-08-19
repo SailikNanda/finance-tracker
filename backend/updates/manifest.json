@@ -1,7 +1,0 @@
-{
-  "version": "1.3.0",
-  "notes": "Real-time Tavily rates, auto-open AI, bug fixes",
-  "js": "bundle.js",
-  "css": "bundle.css",
-  "checksum": "12ed383593823f4b"
-}
