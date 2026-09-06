@@ -10,8 +10,16 @@ if (Test-Path $envPath) {
         if ($line -match '^VITE_GITHUB_REPO=(.+)$') { $repo = $Matches[1].Trim(); break }
     }
 }
+# Fallback: derive from git remote if .env missing (e.g. fresh clone)
 if (-not $repo) {
-    Write-Output "[ERROR] VITE_GITHUB_REPO not found in frontend\.env"
+    try {
+        $url = & git -C $root remote get-url origin 2>$null
+        if ($url -and $url -match 'github\.com[:/](.+?)(?:\.git)?\s*$') { $repo = $Matches[1].Trim() }
+    } catch {}
+}
+if (-not $repo) {
+    Write-Output "[ERROR] VITE_GITHUB_REPO not found in frontend\.env and could not derive from git remote."
+    Write-Output "        Create frontend\.env with: VITE_GITHUB_REPO=SailikNanda/finance-tracker"
     exit 1
 }
 
