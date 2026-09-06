@@ -1,4 +1,4 @@
-"""Currency conversion service.
+﻿"""Currency conversion service.
 
 Uses open.er-api.com (free, no key) as primary source.
 Falls back to Tavily web search if open.er-api fails and user has configured a key.
@@ -242,6 +242,13 @@ class CurrencyService:
             )
             db.add(row)
             db.commit()
+            # Prune old cache rows to prevent unbounded growth (keep ~20 per base or 7 days)
+            try:
+                from sqlalchemy import text as _text
+                db.execute(_text("DELETE FROM currency_rates_cache WHERE fetched_at < datetime('now', '-7 days')"))
+                db.commit()
+            except Exception:
+                db.rollback()
         except Exception as e:
             log.warning("DB rate cache persist failed: %s", e)
             db.rollback()

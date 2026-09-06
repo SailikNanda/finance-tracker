@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react'
+﻿import React, { useState, useEffect, useRef } from 'react'
 import { BarChartIcon, LightbulbIcon, ZapIcon, BookOpenIcon, TargetIcon, RefreshIcon, SendIcon } from './Icons'
 import { getFinancialInsights, getSavingsSuggestions, hasGroqKey, chatWithFinancialAssistant } from '../utils/groq'
 import * as db from '../utils/db'
@@ -85,32 +85,43 @@ function AIInsights({ month, year, symbol }) {
     }
   }
 
+  // Abort previous load if month/year changes quickly
+  const loadAbortRef = useRef(null)
   const load = async () => {
+    if (loadAbortRef.current) loadAbortRef.current.aborted = true
+    const token = { aborted: false }
+    loadAbortRef.current = token
     setLoadingInsights(true)
     setLoadingSuggestions(true)
     setErr('')
     try {
-      const [cur, sug] = await Promise.all([
+      // Fully parallel: current + previous + 6-month buckets in one go (was serial waterfall)
+      const [cur, prev, sug] = await Promise.all([
         buildCurrentData(month, year),
+        buildPreviousData(month, year),
         buildMonthlyData(),
       ])
-      const prev = await buildPreviousData(month, year)
+      if (token.aborted) return
       const [i, s] = await Promise.all([
         getFinancialInsights(cur, prev, month, year),
         getSavingsSuggestions(sug),
       ])
+      if (token.aborted) return
       setInsights(i)
       setSuggestions(s)
     } catch (e) {
+      if (token.aborted) return
       setErr(e.message || 'Failed to load AI data')
       console.error('AI load failed:', e)
     } finally {
-      setLoadingInsights(false)
-      setLoadingSuggestions(false)
+      if (!token.aborted) {
+        setLoadingInsights(false)
+        setLoadingSuggestions(false)
+      }
     }
   }
 
-  useEffect(() => { load() }, [month, year])
+  useEffect(() => { load(); return () => { if (loadAbortRef.current) loadAbortRef.current.aborted = true } }, [month, year])
 
   const isLoading = activeView === 'insights' ? loadingInsights : (activeView === 'suggestions' ? loadingSuggestions : false)
 
@@ -308,14 +319,17 @@ function AIInsights({ month, year, symbol }) {
 }
 
 async function buildCurrentData(month, year) {
+  // Single DB read (was 2: getTransactions + getCategories)
   const list = await db.getTransactions(month, year)
-  const cats = await db.getCategories(month, year)
   const categories = {}
-  for (const c of cats) categories[c.category] = c.total
   let income = 0, expense = 0
   for (const r of list) {
     if (r.amount > 0) income += r.amount
-    else expense += Math.abs(r.amount)
+    else {
+      const amt = Math.abs(r.amount)
+      expense += amt
+      categories[r.category] = (categories[r.category] || 0) + amt
+    }
   }
   return { income, expense, categories, transactions: list }
 }
@@ -333,6 +347,8 @@ async function buildPreviousData(month, year) {
 }
 
 async function buildMonthlyData() {
+  // Use optimized bucket helper (single scan, early exit) instead of full getAll+sort
+  if (db.getMonthlyBuckets) return await db.getMonthlyBuckets(6)
   const all = await db.getAllTransactions()
   const buckets = new Map()
   for (const r of all) {

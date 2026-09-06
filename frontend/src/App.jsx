@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo, Suspense, lazy } from 'react'
+﻿import React, { useState, useEffect, useCallback, useMemo, Suspense, lazy } from 'react'
 import { motion } from 'framer-motion'
 import { HapticProvider } from './components/HapticFeedback'
 import { DashboardIcon, PlusIcon, ListIcon, AIIcon, SettingsIcon, BanknoteIcon } from './components/Icons'
@@ -66,11 +66,7 @@ function App() {
   const fetchData = useCallback(async () => {
     setLoading(true)
     try {
-      const [t, s, c] = await Promise.all([
-        db.getTransactions(currentMonth, currentYear),
-        db.getSummary(currentMonth, currentYear, currency),
-        db.getCategories(currentMonth, currentYear, currency),
-      ])
+      const { transactions: t, summary: s, categories: c } = await db.getMonthOverview(currentMonth, currentYear, currency)
       setData({ transactions: t, summary: s, categories: c })
     } catch (err) {
       console.error('Failed to load data:', err)

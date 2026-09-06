@@ -1,11 +1,17 @@
-import { getTavilyKey } from './tavily'
+﻿import { getTavilyKey } from './tavily'
 // Direct Groq client - calls Groq API straight from the phone.
 // No backend proxy. API key stored in localStorage on phone.
 
 const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions'
 const MODELS = [
-  'qwen/qwen3.6-27b',
+  'qwen/qwen3.8-27b',
 ]
+
+const GROQ_TIMEOUT = 15000
+const TAVILY_TIMEOUT = 8000
+const AI_CACHE_TTL = 30 * 60 * 1000 // 30 min frontend cache
+const insightsCache = new Map() // key -> {data, ts}
+const suggestionsCache = new Map()
 
 const KEY_STORAGE = 'ft_groq_api_key'
 let activeModel = MODELS[0]
@@ -14,6 +20,28 @@ const MODEL = () => activeModel
 // Qwen3 on Groq: reasoning_effort 'none' truly disables thinking
 // (reasoning_format 'hidden' is kept as a safety net to never surface thinking text).
 const REQ_COMMON = { reasoning_effort: 'none', reasoning_format: 'hidden' }
+
+function fetchWithTimeout(url, options = {}, timeoutMs = GROQ_TIMEOUT) {
+  const controller = new AbortController()
+  const id = setTimeout(() => controller.abort(), timeoutMs)
+  const opts = { ...options, signal: controller.signal }
+  return fetch(url, opts).finally(() => clearTimeout(id))
+}
+
+function getCache(cache, key) {
+  const hit = cache.get(key)
+  if (hit && Date.now() - hit.ts < AI_CACHE_TTL) return hit.data
+  if (hit) cache.delete(key)
+  return null
+}
+function setCache(cache, key, data) {
+  cache.set(key, { data, ts: Date.now() })
+  // keep cache small (max 20 entries)
+  if (cache.size > 20) {
+    const firstKey = cache.keys().next().value
+    cache.delete(firstKey)
+  }
+}
 
 function cleanKey(k) {
   return String(k || '').replace(/[\s\u200B-\u200D\uFEFF]/g, '').trim()
@@ -39,7 +67,7 @@ export async function testConnection() {
   const key = getGroqKey()
   if (!key) return { ok: false, message: 'No Groq key saved.' }
   try {
-    const res = await fetch(GROQ_URL, {
+    const res = await fetchWithTimeout(GROQ_URL, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -52,7 +80,7 @@ export async function testConnection() {
         temperature: 0,
         ...REQ_COMMON,
       }),
-    })
+    }, 10000)
     if (res.status === 401) return { ok: false, message: 'Invalid Groq key (401).' }
     if (res.status === 429) return { ok: false, message: 'Rate limited. Try again later.' }
     if (res.status === 402) return { ok: false, message: 'Groq credits exhausted.' }
@@ -75,15 +103,16 @@ async function groqRequest(prompt, messages) {
     : { model: MODEL(), messages: [{ role: 'user', content: prompt }], temperature: 0.7, max_completion_tokens: 2048, ...REQ_COMMON }
   let res
   try {
-    res = await fetch(GROQ_URL, {
+    res = await fetchWithTimeout(GROQ_URL, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${key}`,
       },
       body: JSON.stringify(body),
-    })
+    }, GROQ_TIMEOUT)
   } catch (e) {
+    if (e.name === 'AbortError') throw new Error('Groq timed out (15s). Try again.')
     if (e.name === 'TypeError') throw new Error('No internet. Check your connection.')
     throw new Error('Network error: ' + (e.message || 'unknown'))
   }
@@ -102,13 +131,13 @@ async function groqRequest(prompt, messages) {
   const content = String(msg.content || '').trim()
   if (!content) {
     // Empty content (e.g. budget exhausted during thinking) must never render
-    // as a blank report — let the caller fall back to the built-in text.
+    // as a blank report ΓÇö let the caller fall back to the built-in text.
     throw new Error('The AI returned an empty response. Please try again.')
   }
   let result = stripThinking(content)
   // Some Qwen3 responses separate the answer with a "final answer:" marker.
-  const finalAnswerIdx = result.search(/final\s+answer\s*[:：]/i)
-  if (finalAnswerIdx > 0) result = result.slice(finalAnswerIdx).replace(/final\s+answer\s*[:：]/i, '')
+  const finalAnswerIdx = result.search(/final\s+answer\s*[:∩╝Ü]/i)
+  if (finalAnswerIdx > 0) result = result.slice(finalAnswerIdx).replace(/final\s+answer\s*[:∩╝Ü]/i, '')
   // If result still starts with a thinking phrase, strip leading lines
   if (/^\s*(Okay|Alright|Ok|Sure|Hmm|Well|Let me|I need|I should|I must|I will|First|The user|Looking at|Based on|To answer|To provide|My approach|Step\s*\d)/i.test(result)) {
     result = stripThinking(result)
@@ -120,24 +149,24 @@ async function groqRequest(prompt, messages) {
 function stripThinking(text) {
   let s = String(text)
 
-  // ── Step 1: If the response contains <think>...</think>, keep ONLY what comes after </think> ──
+  // ΓöÇΓöÇ Step 1: If the response contains <think>...</think>, keep ONLY what comes after </think> ΓöÇΓöÇ
   const afterClose = s.replace(/[\s\S]*?<\/think>\s*/i, '')
   if (afterClose.trim().length > 20) s = afterClose
 
-  // ── Step 2: Strip explicit thinking containers ──
+  // ΓöÇΓöÇ Step 2: Strip explicit thinking containers ΓöÇΓöÇ
   s = s.replace(/<think>[\s\S]*?<\/think>/gi, '')
   s = s.replace(/<thinking>[\s\S]*?<\/thinking>/gi, '')
   s = s.replace(/<\/?think>/gi, '')
   s = s.replace(/```thinking[\s\S]*?```/gi, '')
   s = s.replace(/```\s*think[\s\S]*?```/gi, '')
 
-  // ── Step 3: Strip Qwen-specific reasoning patterns ──
+  // ΓöÇΓöÇ Step 3: Strip Qwen-specific reasoning patterns ΓöÇΓöÇ
   // "Here's a thinking process:" followed by numbered reasoning
   s = s.replace(/^Here'?s?\s+a\s+thinking\s+process[\s\S]*$/im, '')
   // "thinking:" prefix
   s = s.replace(/^thinking:\s*[\s\S]*?\n{2,}/im, '')
 
-  // ── Step 4: Strip common reasoning openers (greedy — consume everything until double-newline) ──
+  // ΓöÇΓöÇ Step 4: Strip common reasoning openers (greedy ΓÇö consume everything until double-newline) ΓöÇΓöÇ
   const openers = [
     /^\s*(Okay|Alright|Ok|Sure|Hmm|Well|Let's see|Now)[\s,\.]+.{0,20}?\n{2,}/im,
     /^\s*Let me\s+(think|consider|analyze|break down|review|examine|look at|go through|work through|reason through|process|start|begin|outline|structure|organize|plan|calculate|compute|determine|evaluate|assess|examine|compare|estimate|measure|figure out|work on|think about|look into|check|verify|validate|confirm|double.check)[\s\S]*?\n{2,}/im,
@@ -149,7 +178,7 @@ function stripThinking(text) {
   ]
   for (const re of openers) s = s.replace(re, '')
 
-  // ── Step 5: If the first meaningful line looks like reasoning, drop it ──
+  // ΓöÇΓöÇ Step 5: If the first meaningful line looks like reasoning, drop it ΓöÇΓöÇ
   const lines = s.split('\n')
   let startIdx = 0
   for (let i = 0; i < lines.length; i++) {
@@ -163,7 +192,7 @@ function stripThinking(text) {
   }
   if (startIdx > 0) s = lines.slice(startIdx).join('\n')
 
-  // ── Step 6: Clean up orphaned newlines ──
+  // ΓöÇΓöÇ Step 6: Clean up orphaned newlines ΓöÇΓöÇ
   s = s.replace(/\n{3,}/g, '\n\n').trim()
   return s
 }
@@ -260,6 +289,11 @@ function stripEmoji(s) {
 const MONTHS = ['', 'January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
 
 export async function getFinancialInsights(currentMonth, previousMonth, month, year) {
+  // frontend cache - same month data should not hit Groq again within 30 min
+  const cacheKey = `ins:${month}:${year}:${currentMonth.income}:${currentMonth.expense}:${JSON.stringify(currentMonth.categories)}:${previousMonth.income}:${previousMonth.expense}:${hasGroqKey() ? MODEL() : 'nokey'}`
+  const cached = getCache(insightsCache, cacheKey)
+  if (cached) return cached
+
   const catText = Object.entries(currentMonth.categories || {})
     .map(([k, v]) => `\u2022 ${k}: ${Number(v).toFixed(2)}`)
     .join('\n') || 'No expenses recorded yet'
@@ -274,7 +308,7 @@ SPENDING ANALYSIS
 - Compare to the previous month only if previous data is non-zero.
 
 CATEGORY BREAKDOWN
-- For each non-zero category in the data, one line: "Category: amount — brief comment."
+- For each non-zero category in the data, one line: "Category: amount ΓÇö brief comment."
 
 RECOMMENDATIONS
 - Three specific, realistic actions to improve next month. Start each line with a dash.
@@ -283,9 +317,9 @@ OUTLOOK
 - One sentence on what to watch for next month.
 
 Data:
-Current month — Income: ${currentMonth.income.toFixed(2)}, Expenses: ${currentMonth.expense.toFixed(2)}, Balance: ${(currentMonth.income - currentMonth.expense).toFixed(2)}.
+Current month ΓÇö Income: ${currentMonth.income.toFixed(2)}, Expenses: ${currentMonth.expense.toFixed(2)}, Balance: ${(currentMonth.income - currentMonth.expense).toFixed(2)}.
 Categories: ${catText}
-Previous month — Income: ${previousMonth.income.toFixed(2)}, Expenses: ${previousMonth.expense.toFixed(2)}.
+Previous month ΓÇö Income: ${previousMonth.income.toFixed(2)}, Expenses: ${previousMonth.expense.toFixed(2)}.
 
 Keep total response under 350 words.`
 
@@ -296,7 +330,7 @@ Keep total response under 350 words.`
 
   const topCat = Object.entries(currentMonth.categories || {}).sort((a, b) => b[1] - a[1])[0]?.[0] || 'N/A'
 
-  return {
+  const result = {
     month: MONTHS[month],
     year,
     insights,
@@ -310,9 +344,14 @@ Keep total response under 350 words.`
     provider: 'groq',
     model: hasGroqKey() ? MODEL() : '',
   }
+  setCache(insightsCache, cacheKey, result)
+  return result
 }
 
 export async function getSavingsSuggestions(monthlyData) {
+  const cacheKey = `sug:${JSON.stringify(monthlyData)}:${hasGroqKey() ? MODEL() : 'nokey'}`
+  const cached = getCache(suggestionsCache, cacheKey)
+  if (cached) return cached
   const dataText = monthlyData.map(d =>
     `\u2022 Month ${d.month}/${d.year}: Income ${d.income.toFixed(2)}, Expenses ${d.expense.toFixed(2)}, Saved ${(d.income - d.expense).toFixed(2)}`
   ).join('\n')
@@ -345,7 +384,7 @@ Keep total response under 350 words.`
   suggestions = stripEmoji(suggestions)
 
   const avg = arr => arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : 0
-  return {
+  const result = {
     suggestions,
     analysis_period: `${monthlyData.length} months`,
     average_income: avg(monthlyData.map(d => d.income)),
@@ -354,6 +393,8 @@ Keep total response under 350 words.`
     provider: 'groq',
     model: hasGroqKey() ? MODEL() : '',
   }
+  setCache(suggestionsCache, cacheKey, result)
+  return result
 }
 
 export async function chatWithFinancialAssistant(messages) {
@@ -382,7 +423,7 @@ Your instructions:
 
   if (needsSearch && tavilyKey) {
     try {
-      const searchRes = await fetch('https://api.tavily.com/search', {
+      const searchRes = await fetchWithTimeout('https://api.tavily.com/search', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -393,7 +434,7 @@ Your instructions:
           max_results: 3,
           topic: 'finance',
         }),
-      })
+      }, TAVILY_TIMEOUT)
       if (searchRes.ok) {
         const searchData = await searchRes.json()
         searchContext = `[Search Results from Internet]:\n${searchData.answer || ''}\n\n`

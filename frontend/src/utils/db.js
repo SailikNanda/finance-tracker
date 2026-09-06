@@ -1,4 +1,4 @@
-import { getRates } from './tavily'
+﻿import { getRates } from './tavily'
 // IndexedDB wrapper - all transaction data lives on the phone.
 // No backend. No cloud. No upload. Pure local.
 
@@ -174,9 +174,9 @@ function toTargetAmount(amount, txCurrency, targetCurrency, rates) {
   return amountInTarget
 }
 
-export async function getSummary(month, year, targetCurrency = 'INR') {
-  const list = await getTransactions(month, year)
-  const rates = await loadRates(targetCurrency)
+export async function getSummary(month, year, targetCurrency = 'INR', preloadedList = null, preloadedRates = null) {
+  const list = preloadedList ?? await getTransactions(month, year)
+  const rates = preloadedRates ?? await loadRates(targetCurrency)
 
   let income = 0, expense = 0
   for (const r of list) {
@@ -196,9 +196,9 @@ export async function getSummary(month, year, targetCurrency = 'INR') {
   }
 }
 
-export async function getCategories(month, year, targetCurrency = 'INR') {
-  const list = await getTransactions(month, year)
-  const rates = await loadRates(targetCurrency)
+export async function getCategories(month, year, targetCurrency = 'INR', preloadedList = null, preloadedRates = null) {
+  const list = preloadedList ?? await getTransactions(month, year)
+  const rates = preloadedRates ?? await loadRates(targetCurrency)
 
   const map = new Map()
   for (const r of list) {
@@ -210,6 +210,34 @@ export async function getCategories(month, year, targetCurrency = 'INR') {
   return Array.from(map.entries())
     .map(([category, total]) => ({ category, total }))
     .sort((a, b) => b.total - a.total)
+}
+
+// Optimized: single DB read + single rates fetch for all 3 (was 3 reads + 2 rates fetches)
+export async function getMonthOverview(month, year, targetCurrency = 'INR') {
+  const list = await getTransactions(month, year)
+  const rates = await loadRates(targetCurrency)
+  const [summary, categories] = await Promise.all([
+    getSummary(month, year, targetCurrency, list, rates),
+    getCategories(month, year, targetCurrency, list, rates),
+  ])
+  return { transactions: list, summary, categories }
+}
+
+// Optimized monthly buckets for AI - uses single getAll but buckets without full sort overhead
+export async function getMonthlyBuckets(limitMonths = 6) {
+  const all = await getAllTransactions()
+  // all is already sorted by createdAt desc, bucket in O(n) then slice
+  const buckets = new Map()
+  for (const r of all) {
+    const k = `${r.year}-${String(r.month).padStart(2, '0')}`
+    const b = buckets.get(k) || { month: r.month, year: r.year, income: 0, expense: 0 }
+    if (r.amount > 0) b.income += r.amount
+    else b.expense += Math.abs(r.amount)
+    buckets.set(k, b)
+    if (buckets.size >= limitMonths && all.indexOf(r) > 2000) break // early stop if we have enough and scanned a lot
+  }
+  const sorted = Array.from(buckets.values()).sort((a, b) => (b.year - a.year) || (b.month - a.month))
+  return sorted.slice(0, limitMonths)
 }
 
 export async function exportJSON() {

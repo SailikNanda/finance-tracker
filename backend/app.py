@@ -1,4 +1,4 @@
-"""Finera backend - FastAPI application.
+﻿"""Finera backend - FastAPI application.
 
 Refactored: SQLAlchemy 2.0 ORM, Pydantic v2 schemas, service layer,
 structured logging, proper error handlers, async currency rates,
@@ -27,8 +27,12 @@ from schemas import (
     CategoryTotal, CurrencyConvertRequest, CurrencyConvertResponse, CurrencyRates,
     HealthResponse, MonthSummary, TransactionCreate, TransactionResponse, UpdateInfo,
 )
+from services.cache import TTLCache
 from services.currency import currency_service, CurrencyError
 from services.updates import get_update_info, get_ota_manifest, serve_bundle_file
+
+# AI response cache (1 hour TTL) - prevents repeated Groq calls for same month
+ai_cache: TTLCache[dict] = TTLCache()
 
 # ---------------------------------------------------------------------------
 # Logging
@@ -294,33 +298,43 @@ def get_categories(
 # AI
 # ---------------------------------------------------------------------------
 @app.get("/ai/insights", response_model=AIInsightsResponse)
-def get_ai_insights(
+async def get_ai_insights(
     month: Optional[int] = Query(None, ge=1, le=12),
     year: Optional[int] = Query(None, ge=1970, le=9999),
     db: Session = Depends(get_db),
 ) -> AIInsightsResponse:
+    import asyncio
+
     now = datetime.now()
     m = month or now.month
     y = year or now.year
     api_key = get_api_key(db)
+
+    # Cache key includes month/year + key hash to avoid cross-user leakage
+    cache_key = f"insights:{m}:{y}:{hash(api_key) & 0xFFFF}"
+    cached = ai_cache.get(cache_key)
+    if cached:
+        return AIInsightsResponse(**cached)
+
     ai = FinanceAI(api_key=api_key)
 
+    # Single query for current month - derive everything in one pass (was 2 queries before)
     rows = db.query(Transaction).filter(Transaction.month == m, Transaction.year == y).all()
     rows_dicts = [
         {"id": r.id, "name": r.name, "amount": r.amount, "category": r.category,
          "type": r.type, "date": r.date, "month": r.month, "year": r.year}
         for r in rows
     ]
-    cat_rows = (
-        db.query(Transaction.category, func.sum(func.abs(Transaction.amount)).label("total"))
-        .filter(Transaction.month == m, Transaction.year == y, Transaction.amount < 0)
-        .group_by(Transaction.category)
-        .all()
-    )
-    categories = {r.category: r.total for r in cat_rows}
-
-    total_income = sum(r["amount"] for r in rows_dicts if r["amount"] > 0)
-    total_expense = sum(abs(r["amount"]) for r in rows_dicts if r["amount"] < 0)
+    categories: dict[str, float] = {}
+    total_income = 0.0
+    total_expense = 0.0
+    for r in rows:
+        if r.amount > 0:
+            total_income += r.amount
+        else:
+            amt = abs(r.amount)
+            total_expense += amt
+            categories[r.category] = categories.get(r.category, 0) + amt
 
     previous_month = m - 1 if m > 1 else 12
     previous_year = y if m > 1 else y - 1
@@ -330,11 +344,20 @@ def get_ai_insights(
     prev_income = sum(r.amount for r in prev_rows if r.amount > 0)
     prev_expense = sum(abs(r.amount) for r in prev_rows if r.amount < 0)
 
-    result = ai.get_financial_insights(
-        current_month_data={"income": total_income, "expense": total_expense, "categories": categories, "transactions": rows_dicts},
-        previous_month_data={"income": prev_income, "expense": prev_expense},
-        month=m, year=y,
-    )
+    # Run blocking Groq call in threadpool to avoid blocking event loop
+    if api_key:
+        result = await asyncio.to_thread(
+            ai.get_financial_insights,
+            current_month_data={"income": total_income, "expense": total_expense, "categories": categories, "transactions": rows_dicts},
+            previous_month_data={"income": prev_income, "expense": prev_expense},
+            month=m, year=y,
+        )
+    else:
+        result = ai.get_financial_insights(
+            current_month_data={"income": total_income, "expense": total_expense, "categories": categories, "transactions": rows_dicts},
+            previous_month_data={"income": prev_income, "expense": prev_expense},
+            month=m, year=y,
+        )
     top_category = max(categories.items(), key=lambda x: x[1])[0] if categories else "N/A"
     result.setdefault("highlights", {
         "income": total_income,
@@ -343,32 +366,59 @@ def get_ai_insights(
         "top_category": top_category,
     })
     result["ai_configured"] = bool(api_key)
-    if not api_key:
-        result["model"] = ""
-    else:
-        result["model"] = ai.model
+    result["model"] = ai.model if api_key else ""
+    # Cache for 1 hour (3600s)
+    ai_cache.set(cache_key, result, 3600)
     return AIInsightsResponse(**result)
 
 
 @app.get("/ai/suggestions", response_model=AISuggestionsResponse)
-def get_ai_suggestions(db: Session = Depends(get_db)) -> AISuggestionsResponse:
+async def get_ai_suggestions(db: Session = Depends(get_db)) -> AISuggestionsResponse:
+    import asyncio
+    from sqlalchemy import and_, or_
+
     now = datetime.now()
     api_key = get_api_key(db)
+    cache_key = f"suggestions:{now.month}:{now.year}:{hash(api_key) & 0xFFFF}"
+    cached = ai_cache.get(cache_key)
+    if cached:
+        return AISuggestionsResponse(**cached)
+
     ai = FinanceAI(api_key=api_key)
-    monthly_data = []
+
+    # Build 6 month keys
+    month_keys: list[tuple[int, int]] = []
     for i in range(6):
         m = now.month - i
         y = now.year
         if m <= 0:
             m += 12
             y -= 1
-        rows = db.query(Transaction).filter(Transaction.month == m, Transaction.year == y).all()
-        income = sum(r.amount for r in rows if r.amount > 0)
-        expense = sum(abs(r.amount) for r in rows if r.amount < 0)
-        monthly_data.append({"month": m, "year": y, "income": income, "expense": expense})
-    result = ai.get_savings_suggestions(monthly_data)
+        month_keys.append((m, y))
+
+    # Single query for all 6 months (was 6 sequential queries before - N+1)
+    conditions = [and_(Transaction.month == m, Transaction.year == y) for m, y in month_keys]
+    all_rows = db.query(Transaction).filter(or_(*conditions)).all()
+
+    # Bucket in memory
+    bucket: dict[tuple[int, int], dict] = {k: {"month": k[0], "year": k[1], "income": 0.0, "expense": 0.0} for k in month_keys}
+    for r in all_rows:
+        k = (r.month, r.year)
+        if k in bucket:
+            if r.amount > 0:
+                bucket[k]["income"] += r.amount
+            else:
+                bucket[k]["expense"] += abs(r.amount)
+
+    monthly_data = [bucket[k] for k in month_keys]
+
+    if api_key:
+        result = await asyncio.to_thread(ai.get_savings_suggestions, monthly_data)
+    else:
+        result = ai.get_savings_suggestions(monthly_data)
     result["ai_configured"] = bool(api_key)
     result["model"] = ai.model if api_key else ""
+    ai_cache.set(cache_key, result, 3600)
     return AISuggestionsResponse(**result)
 
 

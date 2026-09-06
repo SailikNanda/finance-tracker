@@ -1,4 +1,4 @@
-import os
+﻿import os
 from groq import Groq
 
 class FinanceAI:
@@ -7,7 +7,7 @@ class FinanceAI:
             api_key = os.getenv("GROQ_API_KEY", "")
         self._api_key = api_key
         self._client = None
-        self.model = "llama-3.3-70b-versatile"
+        self.model = "qwen/qwen3.8-27b"
 
     @property
     def client(self):
@@ -63,7 +63,7 @@ Tip: add a free Groq API key in Settings to unlock live AI analysis."""
                       "July", "August", "September", "October", "November", "December"]
         
         categories_text = "\n".join(
-            f"• {cat}: ${total:.2f}" for cat, total in current_month_data["categories"].items()
+            f"ΓÇó {cat}: ${total:.2f}" for cat, total in current_month_data["categories"].items()
         ) if current_month_data["categories"] else "No expenses recorded yet"
         
         prompt = f"""Analyze this financial data and provide insights for {month_names[month]} {year}:
@@ -104,7 +104,7 @@ Keep response concise and actionable. Use emojis for visual appeal."""
     
     def get_savings_suggestions(self, monthly_data: list) -> dict:
         data_text = "\n".join(
-            f"• Month {d['month']}/{d['year']}: Income ${d['income']:.2f}, Expenses ${d['expense']:.2f}, Saved ${d['income'] - d['expense']:.2f}"
+            f"ΓÇó Month {d['month']}/{d['year']}: Income ${d['income']:.2f}, Expenses ${d['expense']:.2f}, Saved ${d['income'] - d['expense']:.2f}"
             for d in monthly_data
         )
         

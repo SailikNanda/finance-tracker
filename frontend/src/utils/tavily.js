@@ -1,10 +1,18 @@
-// Direct Tavily client - calls Tavily API straight from the phone.
+﻿// Direct Tavily client - calls Tavily API straight from the phone.
 // Real-time, day-to-day currency rates via web search.
 
 const TAVILY_URL = 'https://api.tavily.com/search'
 const KEY_STORAGE = 'ft_tavily_api_key'
 const CACHE_KEY = 'ft_tavily_cache'
 const CACHE_TTL = 60 * 60 * 1000
+const TAVILY_TIMEOUT = 8000
+const OPEN_TIMEOUT = 6000
+
+function fetchWithTimeout(url, options = {}, timeoutMs = TAVILY_TIMEOUT) {
+  const controller = new AbortController()
+  const id = setTimeout(() => controller.abort(), timeoutMs)
+  return fetch(url, { ...options, signal: controller.signal }).finally(() => clearTimeout(id))
+}
 
 const CURRENCY_NAMES = {
   USD: 'US Dollar', EUR: 'Euro', GBP: 'British Pound', JPY: 'Japanese Yen',
@@ -89,7 +97,7 @@ function parseLooseRates(text) {
   const patterns = [
     /(?:^|\s)(\d+(?:\.\d+)?)\s*([A-Z]{3})\b/g,
     /\b([A-Z]{3})\b\s*[:=]?\s*(\d+(?:\.\d+)?)/g,
-    /(\d+(?:\.\d+)?)\s*(?:to|→)\s*([A-Z]{3})/gi,
+    /(\d+(?:\.\d+)?)\s*(?:to|ΓåÆ)\s*([A-Z]{3})/gi,
   ]
   for (const re of patterns) {
     let m
@@ -115,7 +123,7 @@ export async function testConnection() {
   const key = getTavilyKey()
   if (!key) return { ok: false, message: 'No Tavily key saved.' }
   try {
-    const res = await fetch(TAVILY_URL, {
+    const res = await fetchWithTimeout(TAVILY_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -126,7 +134,7 @@ export async function testConnection() {
         max_results: 3,
         topic: 'finance',
       }),
-    })
+    }, TAVILY_TIMEOUT)
     if (res.status === 401) return { ok: false, message: 'Invalid API key (401). Check and try again.' }
     if (res.status === 432) return { ok: false, message: 'Monthly quota exceeded.' }
     if (res.status === 429) return { ok: false, message: 'Rate limited. Try again in a moment.' }
@@ -140,6 +148,7 @@ export async function testConnection() {
     if (Object.keys(rates).length) return { ok: true, message: 'Connected. Live rates ready.' }
     return { ok: true, message: 'Connected. (Tavily may not return rates outside converter context.)' }
   } catch (e) {
+    if (e.name === 'AbortError') return { ok: false, message: 'Tavily timed out (8s). Try again.' }
     if (e.name === 'TypeError') return { ok: false, message: 'Network error. Check your internet connection.' }
     return { ok: false, message: e.message || 'Connection failed' }
   }
@@ -154,7 +163,7 @@ async function fetchFromTavily(base) {
 
   let res
   try {
-    res = await fetch(TAVILY_URL, {
+    res = await fetchWithTimeout(TAVILY_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -166,8 +175,9 @@ async function fetchFromTavily(base) {
         max_results: 5,
         topic: 'finance',
       }),
-    })
+    }, TAVILY_TIMEOUT)
   } catch (e) {
+    if (e.name === 'AbortError') throw new Error('Tavily timed out (8s). Try again.')
     if (e.name === 'TypeError') throw new Error('No internet. Check your connection.')
     throw new Error('Network error: ' + (e.message || 'unknown'))
   }
@@ -226,7 +236,7 @@ export async function getRates(base = 'USD', { force = false } = {}) {
 
   // 1) Try open.er-api.com first (reliable real-time data, no API key required)
   try {
-    const res = await fetch(`https://open.er-api.com/v6/latest/${base}`)
+    const res = await fetchWithTimeout(`https://open.er-api.com/v6/latest/${base}`, {}, OPEN_TIMEOUT)
     if (res.ok) {
       const data = await res.json()
       if (data && data.result === 'success' && data.rates) {

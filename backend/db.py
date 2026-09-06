@@ -1,4 +1,4 @@
-"""SQLAlchemy 2.0 ORM models and engine setup."""
+﻿"""SQLAlchemy 2.0 ORM models and engine setup."""
 from __future__ import annotations
 from datetime import datetime
 from pathlib import Path
@@ -82,7 +82,44 @@ engine = create_engine(
     connect_args={"check_same_thread": False} if settings.database_url.startswith("sqlite") else {},
     pool_pre_ping=True,
 )
+# Enable WAL for better concurrent read/write performance on SQLite
+if settings.database_url.startswith("sqlite"):
+    from sqlalchemy import event
+
+    @event.listens_for(engine, "connect")
+    def _set_sqlite_pragma(dbapi_connection, connection_record):
+        cursor = dbapi_connection.cursor()
+        try:
+            cursor.execute("PRAGMA journal_mode=WAL;")
+            cursor.execute("PRAGMA synchronous=NORMAL;")
+            cursor.execute("PRAGMA cache_size=-64000;")  # 64MB cache
+            cursor.execute("PRAGMA temp_store=MEMORY;")
+        finally:
+            cursor.close()
+
 SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False, expire_on_commit=False)
+
+
+def cleanup_old_rates(db: Session, keep_per_base: int = 20) -> None:
+    """Keep only the newest N rate rows per base to prevent unbounded growth."""
+    try:
+        from sqlalchemy import text
+        db.execute(text("""
+            DELETE FROM currency_rates_cache WHERE id NOT IN (
+                SELECT id FROM currency_rates_cache c2
+                WHERE c2.base = currency_rates_cache.base
+                ORDER BY fetched_at DESC LIMIT :keep
+            )
+        """), {"keep": keep_per_base})
+        # Fallback: if above syntax fails on older SQLite, just prune by age (7 days)
+        db.commit()
+    except Exception:
+        try:
+            db.rollback()
+            db.execute(text("DELETE FROM currency_rates_cache WHERE fetched_at < datetime('now', '-7 days')"))
+            db.commit()
+        except Exception:
+            db.rollback()
 
 
 def init_db() -> None:

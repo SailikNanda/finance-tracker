@@ -1,4 +1,4 @@
-import React, { useState, useDeferredValue, useMemo, useCallback, memo } from 'react'
+﻿import React, { useState, useDeferredValue, useMemo, useCallback, memo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ArrowUpIcon, ArrowDownIcon, TrashIcon, PencilIcon } from './Icons'
 
@@ -42,9 +42,9 @@ function TransactionList({ transactions, loading, symbol, currencies, onDelete, 
     setPendingId(null)
   }
 
-  const visible = (transactions || [])
+  const visible = useMemo(() => (transactions || [])
     .filter(t => filter === 'all' || t.type === filter)
-    .filter(t => !deferredSearch.trim() || t.name.toLowerCase().includes(deferredSearch.trim().toLowerCase()) || t.category.toLowerCase().includes(deferredSearch.trim().toLowerCase()))
+    .filter(t => !deferredSearch.trim() || t.name.toLowerCase().includes(deferredSearch.trim().toLowerCase()) || t.category.toLowerCase().includes(deferredSearch.trim().toLowerCase())), [transactions, filter, deferredSearch])
 
   if (!transactions || transactions.length === 0) {
     return (
