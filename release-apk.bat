@@ -72,7 +72,19 @@ git add -A
 git commit -m "Release v%VERSION%" || echo [WARN] Nothing new to commit.
 git tag -f "v%VERSION%" -m "Finera v%VERSION%"
 git push origin main --tags
-if errorlevel 1 goto :fail
+if errorlevel 1 (
+  echo [INFO] Push rejected (remote ahead), syncing with remote...
+  git fetch origin
+  git pull --rebase origin main
+  if errorlevel 1 (
+    echo [ERROR] Rebase failed, fix conflicts then run: git rebase --continue
+    echo         Or abort with: git rebase --abort
+    goto :fail
+  )
+  echo [INFO] Retrying push...
+  git push origin main --tags
+  if errorlevel 1 goto :fail
+)
 
 echo [5/5] Creating GitHub Release...
 gh release create "v%VERSION%" "%APK%" --title "Finera v%VERSION%" --notes "New Finera release v%VERSION%. Install from the app via Settings - App update, or download here."
