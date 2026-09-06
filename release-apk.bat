@@ -51,6 +51,19 @@ if errorlevel 1 ( popd & goto :fail )
 popd
 
 echo [3/5] Syncing to Android and building APK...
+REM Auto-fix missing local.properties (SDK location not found)
+if not exist "frontend\android\local.properties" (
+  echo [FIX] local.properties missing, creating with SDK at %%LOCALAPPDATA%%\Android\Sdk
+  if defined ANDROID_HOME (
+    echo sdk.dir=%ANDROID_HOME:\=\\% > frontend\android\local.properties
+  ) else (
+    echo sdk.dir=C\:\\Users\\%USERNAME%\\AppData\\Local\\Android\\Sdk > frontend\android\local.properties
+    if not exist "%LOCALAPPDATA%\Android\Sdk\platform-tools\adb.exe" (
+      echo [WARN] SDK not found at default location, please set ANDROID_HOME
+    )
+  )
+  type frontend\android\local.properties
+)
 pushd frontend
 call npx cap sync android
 if errorlevel 1 ( popd & goto :fail )
