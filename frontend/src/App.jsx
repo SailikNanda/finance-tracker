@@ -4,6 +4,7 @@ import { HapticProvider } from './components/HapticFeedback'
 import { DashboardIcon, PlusIcon, ListIcon, AIIcon, SettingsIcon, BanknoteIcon } from './components/Icons'
 import { APP_VERSION } from './utils/version'
 import * as db from './utils/db'
+import appLogo from '../android/app/src/main/res/mipmap-xxhdpi/ic_launcher.png'
 
 const Dashboard = lazy(() => import('./components/Dashboard'))
 const TransactionForm = lazy(() => import('./components/TransactionForm'))
@@ -213,12 +214,8 @@ function AppContent({
 
       <header className="app-header">
         <div className="logo">
-          <div className="logo-icon">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M12 2L2 7l10 5 10-5-10-5z" />
-              <path d="M2 17l10 5 10-5" />
-              <path d="M2 12l10 5 10-5" />
-            </svg>
+          <div className="logo-icon" style={{ padding: 0, overflow: 'hidden', background: 'white', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <img src={appLogo} alt="Finera logo" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
           </div>
           <div className="logo-text">
             <h1>Finera</h1>
