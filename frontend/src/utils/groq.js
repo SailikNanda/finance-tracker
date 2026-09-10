@@ -1,6 +1,8 @@
 ﻿import { getTavilyKey } from './tavily'
+import * as db from './db'
 // Direct Groq client - calls Groq API straight from the phone.
 // No backend proxy. API key stored in localStorage on phone.
+// Now includes local transaction diary for detailed Q&A.
 
 const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions'
 const MODELS = [
@@ -403,16 +405,44 @@ export async function chatWithFinancialAssistant(messages) {
 
   const lastUserMessage = [...messages].reverse().find(m => m.role === 'user')?.content || ''
 
-  // System prompt to enforce banking/finance assistant rules
-  const systemPrompt = `You are a professional Financial & Banking Assistant. 
+  // --- Fetch local transaction diary (100% local, IndexedDB) ---
+  let diaryContext = ""
+  try {
+    const all = await db.getAllTransactions()
+    if (all && all.length) {
+      // Take most recent 100, sorted by date desc (getAll already sorted)
+      const recent = all.slice(0, 100)
+      const totalIncome = recent.filter(t => t.amount > 0).reduce((s, t) => s + Number(t.amount), 0)
+      const totalExpense = recent.filter(t => t.amount < 0).reduce((s, t) => s + Math.abs(Number(t.amount)), 0)
+      const lines = recent.map(t => {
+        const d = new Date(t.date)
+        const ds = isNaN(d.getTime()) ? String(t.date).slice(0, 16) : d.toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+        const amt = `${t.type === 'income' ? '+' : '-'}${Math.abs(Number(t.amount)).toFixed(2)} ${t.currency || 'INR'}`
+        return `${ds} | ${t.type} | ${t.category} | ${t.name} | ${amt}`
+      }).join('\n')
+      diaryContext = `[User's Local Transaction Diary - ${all.length} total records, showing last ${recent.length}]:\n` +
+        `Summary of shown: Income ${totalIncome.toFixed(2)}, Expense ${totalExpense.toFixed(2)}, Balance ${(totalIncome - totalExpense).toFixed(2)}\n` +
+        lines + "\n" +
+        `Instruction: Use this diary to answer any question about dates, amounts, categories, where/when/how much. If user asks "5 Sep koto khoroch", filter by that date. Keep data local, never hallucinate. If no matching record, say "Ei tarikhe kono record nei".`
+    } else {
+      diaryContext = `[User's Local Transaction Diary: No transactions yet. User has not saved any income/expense.]`
+    }
+  } catch (e) {
+    console.warn('Diary fetch failed:', e)
+    diaryContext = `[Diary fetch error: ${e.message}]`
+  }
+
+  // System prompt to enforce banking/finance + diary assistant rules
+  const systemPrompt = `You are a professional Financial & Banking Assistant with access to the user's LOCAL transaction diary.
 Your instructions:
-1. You must ONLY answer questions related to finance, banking, currency exchange, savings, investments, tax, loans, stock markets, card offers, and general economy.
-2. If the user asks about coding, programming, web development, general trivia, math (unrelated to finance), science, history, translation (outside finance), or anything else outside finance, politely refuse to answer. You are NOT allowed to answer coding questions or other non-financial questions under any circumstances.
-3. You can converse in any language the user speaks.
-4. Keep your answers concise, practical, and highly professional.
-5. If the user's query requires current real-time financial information (like interest rates, stock prices, exchange rates, banking news, today's rates, latest updates), utilize the provided search context. If no search context is provided or it doesn't answer the question, state that you don't have real-time access for it.
-  6. Do NOT include any thinking, reasoning, chain-of-thought, "Let me", "I need to", or any preamble in your response. Output ONLY the final answer starting directly with the information requested.
-7. For simple greetings (hi, hello, hey), reply with a brief professional greeting and offer to help with financial questions.
+1. You must ONLY answer questions related to finance, banking, currency exchange, savings, investments, tax, loans, stock markets, card offers, general economy, AND the user's own transaction diary.
+2. You HAVE the user's full diary below. When user asks "koto taka, kobe, kothay, kon category, kon tarikhe" - answer precisely from the diary. Quote date, name, amount, category. Do NOT hallucinate. If diary has no matching record, clearly say you don't have it.
+3. If the user asks about coding, programming, web development, general trivia, math (unrelated to finance), science, history, translation (outside finance/diary), politely refuse.
+4. You can converse in any language the user speaks (Bengali, English, Hindi). Match user's language.
+5. If the user's query requires current real-time financial information (like interest rates, stock prices, exchange rates, banking news, today's rates), utilize the provided search context. If no search context is provided or it doesn't answer, state you don't have real-time access.
+6. Do NOT include any thinking, reasoning, chain-of-thought, "Let me", "I need to", or any preamble. Output ONLY the final answer starting directly with the information requested.
+7. For greetings (hi, hello, hey), reply briefly and offer to help with diary or finance questions.
+8. Keep answers concise, practical, and highly professional. Use simple formatting, no excessive emojis.
 `
 
   // Decide if we should do a web search using Tavily.
@@ -447,12 +477,15 @@ Your instructions:
     }
   }
 
+  // Combine diary + search context into the last user message
+  const combinedContext = [diaryContext, searchContext].filter(Boolean).join('\n\n')
+
   // Build the message history for Groq
   const formattedMessages = [
     { role: 'system', content: systemPrompt },
     ...messages.map(m => {
-      if (m.role === 'user' && m.content === lastUserMessage && searchContext) {
-        return { role: 'user', content: `${searchContext}\nUser Question: ${m.content}` }
+      if (m.role === 'user' && m.content === lastUserMessage && combinedContext) {
+        return { role: 'user', content: `${combinedContext}\n\nUser Question: ${m.content}` }
       }
       return m
     })
