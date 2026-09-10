@@ -84,7 +84,7 @@ echo [4/5] Committing and pushing to GitHub...
 git add -A
 git commit -m "Release v%VERSION%" || echo [WARN] Nothing new to commit.
 git tag -f "v%VERSION%" -m "Finera v%VERSION%"
-git push origin main --tags
+git push origin main
 if errorlevel 1 (
   echo [INFO] Push rejected (remote ahead), syncing with remote...
   git fetch origin
@@ -95,18 +95,41 @@ if errorlevel 1 (
     goto :fail
   )
   echo [INFO] Retrying push...
-  git push origin main --tags
+  git push origin main
+  if errorlevel 1 goto :fail
+)
+REM Push tag (force update if already exists)
+git push -f origin "v%VERSION%"
+if errorlevel 1 goto :fail
+
+echo [5/5] Creating GitHub Release...
+REM If release already exists (tag pushed but release failed before), update it instead of failing
+gh release view "v%VERSION%" >nul 2>&1
+if %errorlevel% EQU 0 (
+  echo [INFO] Release v%VERSION% already exists on GitHub, updating APK...
+  gh release upload "v%VERSION%" "%APK%" --clobber
+  if errorlevel 1 goto :fail
+  gh release edit "v%VERSION%" --title "Finera v%VERSION%" --notes "New Finera release v%VERSION%. Install from the app via Settings - App update, or download here."
+  if errorlevel 1 goto :fail
+) else (
+  gh release create "v%VERSION%" "%APK%" --title "Finera v%VERSION%" --notes "New Finera release v%VERSION%. Install from the app via Settings - App update, or download here."
   if errorlevel 1 goto :fail
 )
 
-echo [5/5] Creating GitHub Release...
-gh release create "v%VERSION%" "%APK%" --title "Finera v%VERSION%" --notes "New Finera release v%VERSION%. Install from the app via Settings - App update, or download here."
-if errorlevel 1 goto :fail
+REM Verify release is live and has APK
+echo [INFO] Verifying release...
+gh release view "v%VERSION%" --json assets --jq ".assets[].name" | findstr /i ".apk" >nul
+if errorlevel 1 (
+  echo [WARN] APK not found in release, retrying upload...
+  gh release upload "v%VERSION%" "%APK%" --clobber
+)
 
 echo.
 echo ============================================
 echo  Done! v%VERSION% published to GitHub.
-echo  Users will see "Update available" in the app.
+echo  Users will see "Update available" in the app within 1 hour
+echo  or instantly if they tap "Check again" in Settings - App update.
+echo  Verify: https://github.com/SailikNanda/finance-tracker/releases/tag/v%VERSION%
 echo ============================================
 echo.
 pause
