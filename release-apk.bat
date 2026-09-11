@@ -80,6 +80,9 @@ if not exist "%APK%" (
   exit /b 1
 )
 
+set "SHA=%APK%.sha256"
+powershell -NoProfile -Command "(Get-FileHash -Algorithm SHA256 '%APK%').Hash.ToLower() | Out-File -Encoding ASCII '%SHA%'"
+
 echo [4/5] Committing and pushing to GitHub...
 git add -A
 git commit -m "Release v%VERSION%" || echo [WARN] Nothing new to commit.
@@ -107,12 +110,12 @@ REM If release already exists (tag pushed but release failed before), update it 
 gh release view "v%VERSION%" >nul 2>&1
 if %errorlevel% EQU 0 (
   echo [INFO] Release v%VERSION% already exists on GitHub, updating APK...
-  gh release upload "v%VERSION%" "%APK%" --clobber
+  gh release upload "v%VERSION%" "%APK%" "%SHA%" --clobber
   if errorlevel 1 goto :fail
-  gh release edit "v%VERSION%" --title "Finera v%VERSION%" --notes "New Finera release v%VERSION%. Install from the app via Settings - App update, or download here."
+  gh release edit "v%VERSION%" --title "Finera v%VERSION%" --notes "New Finera release v%VERSION%. Install from the app via Settings - App update, or download here." --latest
   if errorlevel 1 goto :fail
 ) else (
-  gh release create "v%VERSION%" "%APK%" --title "Finera v%VERSION%" --notes "New Finera release v%VERSION%. Install from the app via Settings - App update, or download here."
+  gh release create "v%VERSION%" "%APK%" "%SHA%" --title "Finera v%VERSION%" --notes "New Finera release v%VERSION%. Install from the app via Settings - App update, or download here." --latest
   if errorlevel 1 goto :fail
 )
 
@@ -121,7 +124,7 @@ echo [INFO] Verifying release...
 gh release view "v%VERSION%" --json assets --jq ".assets[].name" | findstr /i ".apk" >nul
 if errorlevel 1 (
   echo [WARN] APK not found in release, retrying upload...
-  gh release upload "v%VERSION%" "%APK%" --clobber
+  gh release upload "v%VERSION%" "%APK%" "%SHA%" --clobber
 )
 
 echo.

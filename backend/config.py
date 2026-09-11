@@ -20,8 +20,8 @@ class Settings(BaseSettings):
     reload: bool = False
     log_level: str = "INFO"
 
-    # CORS - comma separated. Use explicit origins in production.
-    cors_origins: str = "*"
+    # CORS - comma separated. Explicit safe origins by default.
+    cors_origins: str = "http://localhost:3000,http://localhost:8000,https://localhost,capacitor://localhost"
 
     # AI
     groq_api_key: str = ""

@@ -1,4 +1,4 @@
-﻿import { getTavilyKey } from './tavily'
+import { getTavilyKey } from './tavily'
 import * as db from './db'
 // Direct Groq client - calls Groq API straight from the phone.
 // No backend proxy. API key stored in localStorage on phone.
@@ -418,7 +418,9 @@ export async function chatWithFinancialAssistant(messages) {
         const d = new Date(t.date)
         const ds = isNaN(d.getTime()) ? String(t.date).slice(0, 16) : d.toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
         const amt = `${t.type === 'income' ? '+' : '-'}${Math.abs(Number(t.amount)).toFixed(2)} ${t.currency || 'INR'}`
-        return `${ds} | ${t.type} | ${t.category} | ${t.name} | ${amt}`
+        const safeName = String(t.name || '').replace(/[\r\n[\]<>]/g, ' ').slice(0, 100).trim()
+        const safeCat = String(t.category || '').replace(/[\r\n[\]<>]/g, ' ').slice(0, 50).trim()
+        return `${ds} | ${t.type} | ${safeCat} | ${safeName} | ${amt}`
       }).join('\n')
       diaryContext = `[User's Local Transaction Diary - ${all.length} total records, showing last ${recent.length}]:\n` +
         `Summary of shown: Income ${totalIncome.toFixed(2)}, Expense ${totalExpense.toFixed(2)}, Balance ${(totalIncome - totalExpense).toFixed(2)}\n` +
@@ -452,13 +454,20 @@ Your instructions:
   const tavilyKey = getTavilyKey()
 
   if (needsSearch && tavilyKey) {
+    // Privacy: sanitize query by stripping account numbers, card numbers, or large exact amounts
+    const sanitizedQuery = lastUserMessage
+      .replace(/\b\d{4,}\b/g, '') // strip 4+ digit numbers (accounts, cards)
+      .replace(/(?:rs\.?|inr|\$|usd|taka)\s*[\d,]+(?:\.\d+)?/gi, '') // strip specific monetary amounts
+      .replace(/[\r\n]+/g, ' ')
+      .trim()
+
     try {
       const searchRes = await fetchWithTimeout('https://api.tavily.com/search', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           api_key: tavilyKey,
-          query: `finance banking: ${lastUserMessage}`,
+          query: `finance banking: ${sanitizedQuery || 'current banking rates'}`,
           search_depth: 'basic',
           include_answer: true,
           max_results: 3,

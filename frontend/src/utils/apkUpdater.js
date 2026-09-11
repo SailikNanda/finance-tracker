@@ -13,6 +13,17 @@ export function canDownloadInApp() {
   return !!getPlugin()
 }
 
+export async function canInstallUnknownApps() {
+  const plugin = getPlugin()
+  if (!plugin || !plugin.canInstallUnknownApps) return true
+  try {
+    const res = await plugin.canInstallUnknownApps()
+    return !!res.allowed
+  } catch {
+    return true
+  }
+}
+
 export async function downloadApk(url) {
   const plugin = getPlugin()
   if (!plugin) throw new Error('In-app download is only available on Android')

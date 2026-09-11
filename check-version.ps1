@@ -43,12 +43,22 @@ function Test-Newer([string]$new, [string]$old) {
 }
 
 Write-Output "Checking version $Version against GitHub ($repo)..."
+$latest = ""
 try {
-    $release = Invoke-RestMethod -Uri "https://api.github.com/repos/$repo/releases/latest" -Headers @{ Accept = 'application/vnd.github+json' } -ErrorAction Stop
+    $ts = [DateTimeOffset]::UtcNow.ToUnixTimeSeconds()
+    $release = Invoke-RestMethod -Uri "https://api.github.com/repos/$repo/releases/latest?_t=$ts" -Headers @{ Accept = 'application/vnd.github+json' } -ErrorAction Stop
     $latest = [string]$release.tag_name
 } catch {
-    Write-Output "[WARN] Could not reach GitHub. Skipping version check (release will still be created)."
-    exit 0
+    try {
+        $ts = [DateTimeOffset]::UtcNow.ToUnixTimeSeconds()
+        $list = Invoke-RestMethod -Uri "https://api.github.com/repos/$repo/releases?per_page=3&_t=$ts" -Headers @{ Accept = 'application/vnd.github+json' } -ErrorAction Stop
+        if ($list -and $list.Count -gt 0) {
+            $latest = [string]$list[0].tag_name
+        }
+    } catch {
+        Write-Output "[WARN] Could not reach GitHub. Skipping version check (release will still be created)."
+        exit 0
+    }
 }
 
 if (-not (Test-Newer $Version $latest)) {

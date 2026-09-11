@@ -5,7 +5,7 @@
 
 const REPO = (import.meta.env.VITE_GITHUB_REPO || '').trim()
 const CACHE_KEY = 'ft_update_check'
-const CACHE_TTL = 60 * 60 * 1000 // re-check every hour max
+const CACHE_TTL = 5 * 60 * 1000 // re-check every 5 min max
 
 export function hasUpdateRepo() {
   return !!REPO
@@ -44,51 +44,99 @@ export async function checkForUpdates({ force = false } = {}) {
     return { updateAvailable: false, reason: 'no-repo', currentVersion: getCurrentVersion() }
   }
 
-  const cache = readCache()
-  if (!force && cache.checkedAt && Date.now() - cache.checkedAt < CACHE_TTL) {
-    const cached = { ...cache.payload, fromCache: true }
-    cached.currentVersion = getCurrentVersion()
-    cached.updateAvailable = compareVersions(cached.latestVersion || '', cached.currentVersion) > 0
-    cached.reason = cached.updateAvailable ? 'new-version' : 'up-to-date'
-    return cached
+  if (force) {
+    clearUpdateCache()
+  } else {
+    const cache = readCache()
+    if (cache.checkedAt && Date.now() - cache.checkedAt < CACHE_TTL) {
+      const cached = { ...cache.payload, fromCache: true }
+      cached.currentVersion = getCurrentVersion()
+      cached.updateAvailable = compareVersions(cached.latestVersion || '', cached.currentVersion) > 0
+      cached.reason = cached.updateAvailable ? 'new-version' : 'up-to-date'
+      return cached
+    }
   }
 
   try {
-    const res = await fetch(`https://api.github.com/repos/${REPO}/releases/latest`, {
-      headers: { Accept: 'application/vnd.github+json' },
-    })
-    if (res.status === 404) {
-      return { updateAvailable: false, reason: 'no-release', currentVersion: getCurrentVersion() }
+    const current = getCurrentVersion()
+    const ts = Date.now()
+
+    // 1) Query /releases/latest first with no-store cache control
+    let release = null
+    try {
+      const res = await fetch(`https://api.github.com/repos/${REPO}/releases/latest?_t=${ts}`, {
+        cache: 'no-store',
+        headers: { Accept: 'application/vnd.github+json' },
+      })
+      if (res.ok) {
+        release = await res.json()
+      }
+    } catch (err) {
+      console.warn('Failed to fetch releases/latest:', err)
     }
-    if (!res.ok) {
-      throw new Error(`GitHub HTTP ${res.status}`)
+
+    // 2) If latest is missing, or not newer, check /releases list (catches recently published releases that CDN hasn't marked latest yet)
+    let candidateRelease = release
+    const latestVersion = release ? String(release.tag_name || '').replace(/^v/i, '') : ''
+    const latestIsNewer = latestVersion ? compareVersions(latestVersion, current) > 0 : false
+
+    if (!latestIsNewer) {
+      try {
+        const listRes = await fetch(`https://api.github.com/repos/${REPO}/releases?per_page=5&_t=${ts}`, {
+          cache: 'no-store',
+          headers: { Accept: 'application/vnd.github+json' },
+        })
+        if (listRes.ok) {
+          const list = await listRes.json()
+          if (Array.isArray(list) && list.length > 0) {
+            for (const r of list) {
+              if (r.draft || r.prerelease) continue
+              const rVer = String(r.tag_name || '').replace(/^v/i, '')
+              const hasApk = (r.assets || []).some(a => /\.apk$/i.test(a.name || ''))
+              if (hasApk && compareVersions(rVer, current) > 0) {
+                candidateRelease = r
+                break
+              }
+            }
+          }
+        }
+      } catch (e) {
+        console.warn('Fallback releases list fetch failed:', e)
+      }
     }
-    const release = await res.json()
-    const apkAsset = (release.assets || []).find(a =>
+
+    if (!candidateRelease) {
+      return { updateAvailable: false, reason: 'up-to-date', currentVersion: current }
+    }
+
+    const apkAsset = (candidateRelease.assets || []).find(a =>
       /\.apk$/i.test(a.name || '') && a.browser_download_url
     )
     if (!apkAsset) {
-      return { updateAvailable: false, reason: 'no-apk', currentVersion: getCurrentVersion() }
+      return { updateAvailable: false, reason: 'no-apk', currentVersion: current }
     }
 
-    const latest = String(release.tag_name || '').replace(/^v/i, '')
-    const current = getCurrentVersion()
-    const updateAvailable = compareVersions(latest, current) > 0
+    const shaAsset = (candidateRelease.assets || []).find(a =>
+      /\.sha256$/i.test(a.name || '') && a.browser_download_url
+    )
+
+    const resolvedLatest = String(candidateRelease.tag_name || '').replace(/^v/i, '')
+    const updateAvailable = compareVersions(resolvedLatest, current) > 0
 
     const payload = {
       updateAvailable,
       reason: updateAvailable ? 'new-version' : 'up-to-date',
       currentVersion: current,
-      latestVersion: latest,
+      latestVersion: resolvedLatest,
       url: apkAsset.browser_download_url,
+      checksumUrl: shaAsset ? shaAsset.browser_download_url : null,
       size: apkAsset.size || 0,
-      publishedAt: release.published_at || null,
-      name: release.name || `v${latest}`,
-      body: release.body || '',
+      publishedAt: candidateRelease.published_at || null,
+      name: candidateRelease.name || `v${resolvedLatest}`,
+      body: candidateRelease.body || '',
     }
-    cache.checkedAt = Date.now()
-    cache.payload = payload
-    writeCache(cache)
+
+    writeCache({ checkedAt: Date.now(), payload })
     return payload
   } catch (e) {
     console.warn('Update check failed:', e)

@@ -442,7 +442,13 @@ function UpdateCard() {
       clearUpdateCache()
       setMsg({ kind: 'ok', text: 'Installer opened. Tap "Install" to finish the update. The app will restart automatically.' })
     } catch (e) {
-      setMsg({ kind: 'err', text: e.message || 'Install failed' })
+      const isPerm = /unknown apps|permission/i.test(e.message || '')
+      setMsg({
+        kind: 'err',
+        text: isPerm
+          ? 'Please enable "Allow from this source" in Android Settings and tap "Update now" again.'
+          : (e.message || 'Install failed'),
+      })
     } finally {
       setInstalling(false)
     }

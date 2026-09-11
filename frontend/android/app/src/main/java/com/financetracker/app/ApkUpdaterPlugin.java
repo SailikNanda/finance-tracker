@@ -9,6 +9,7 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Environment;
 import android.provider.MediaStore;
+import android.provider.Settings;
 import android.util.Base64;
 
 import androidx.core.content.FileProvider;
@@ -39,8 +40,13 @@ public class ApkUpdaterPlugin extends Plugin {
     @PluginMethod
     public void download(PluginCall call) {
         String url = call.getString("url");
-        if (url == null || url.isEmpty()) {
+        if (url == null || url.trim().isEmpty()) {
             call.reject("No download URL provided");
+            return;
+        }
+        url = url.trim();
+        if (!url.startsWith("https://") && !url.startsWith("http://")) {
+            call.reject("Invalid download URL scheme");
             return;
         }
         try {
@@ -156,9 +162,20 @@ public class ApkUpdaterPlugin extends Plugin {
     }
 
     @PluginMethod
+    public void canInstallUnknownApps(PluginCall call) {
+        JSObject ret = new JSObject();
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            ret.put("allowed", getContext().getPackageManager().canRequestPackageInstalls());
+        } else {
+            ret.put("allowed", true);
+        }
+        call.resolve(ret);
+    }
+
+    @PluginMethod
     public void install(PluginCall call) {
         String filePath = call.getString("filePath");
-        if (filePath == null || filePath.isEmpty()) {
+        if (filePath == null || filePath.trim().isEmpty()) {
             call.reject("Missing file path");
             return;
         }
@@ -168,16 +185,37 @@ public class ApkUpdaterPlugin extends Plugin {
                 call.reject("APK file not found");
                 return;
             }
+
+            // Security check: ensure file is strictly inside updatesDir
+            String fileCanonical = file.getCanonicalPath();
+            String updatesCanonical = updatesDir().getCanonicalPath();
+            if (!fileCanonical.startsWith(updatesCanonical)) {
+                call.reject("Invalid APK file location");
+                return;
+            }
+
+            Context ctx = getContext();
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                if (!ctx.getPackageManager().canRequestPackageInstalls()) {
+                    Intent manageIntent = new Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES);
+                    manageIntent.setData(Uri.parse("package:" + ctx.getPackageName()));
+                    manageIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                    ctx.startActivity(manageIntent);
+                    call.reject("Please allow 'Install unknown apps' permission in Settings, then tap Update now again.");
+                    return;
+                }
+            }
+
             Uri contentUri = FileProvider.getUriForFile(
-                getContext(),
-                getContext().getPackageName() + ".fileprovider",
+                ctx,
+                ctx.getPackageName() + ".fileprovider",
                 file
             );
             Intent intent = new Intent(Intent.ACTION_VIEW);
             intent.setDataAndType(contentUri, "application/vnd.android.package-archive");
             intent.setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-            getContext().startActivity(intent);
+            ctx.startActivity(intent);
             call.resolve();
         } catch (Exception e) {
             call.reject("Install failed: " + e.getMessage());
