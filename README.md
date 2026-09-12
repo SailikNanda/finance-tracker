@@ -4,7 +4,7 @@ Works even if your laptop is off. Data is stored on the phone. No backend or int
 
 ---
 
-## v2.0.0 features
+## v2.0.0 feature
 
 - **In-app updates (GitHub)** — when a new release is published, users see **Settings → App update**, tap once to download and install. Data stays intact. 
 - **Edit transactions** — pencil icon in History; date can be changed (backdating supported)
