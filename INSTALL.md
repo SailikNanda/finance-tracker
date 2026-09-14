@@ -18,7 +18,7 @@ Install everything, then restart your PC.
 2. **Double-click** the `build-apk.bat` file
 3. A window opens and automatically does 4 tasks (npm install, vite build, cap sync, gradle)
 4. Takes 3-5 minutes the first time (30 seconds afterwards)
-5. At the end you'll see the message: "APK location: ..."
+5. At the end you'll see the message: "APK location: ....."
 
 You'll get the APK at:
 ```
