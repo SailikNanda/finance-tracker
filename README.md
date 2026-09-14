@@ -1,14 +1,14 @@
-# Finera v2.0 — Pure APK, Zero Backend
+# Finera v2.8.8— Pure APK, Zero Backend
 
 Works even if your laptop is off. Data is stored on the phone. No backend or internet required.
 
 ---
 
-## v2.0.0 features
+## v2.8.8 features
 
 - **In-app updates (GitHub)** — when a new release is published, users see **Settings → App update**, tap once to download and install. Data stays intact. 
 - **Edit transactions** — pencil icon in History; date can be changed (backdating supported)
-- **Faster AI** — Groq **Qwen 3.6 27B** (automatic fallback to Llama 3.3 70B)
+- **Faster AI** — Groq **Qwen 3.8 27B** (automatic fallback to Llama 3.3 70B)
 - **Fixed backup dates** — import keeps the original dates
 - **PDF export** — spreadsheet-style report with date/time/amount columns
 - **Optimized** — code splitting, faster loads, compound IndexedDB index
