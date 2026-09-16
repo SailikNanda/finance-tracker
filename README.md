@@ -11,7 +11,7 @@ Works even if your laptop is off. Data is stored on the phone. No backend or int
 - **Faster AI** — Groq **Qwen 3.8 27B**
 - **Fixed backup dates** — import keeps the original dates
 - **PDF export** — spreadsheet-style report with date/time/amount columns
-- **Optimized** — code splitting, faster loads, compound IndexedDB inde
+- **Optimized** — code splitting, faster loads, compound IndexedDB index
 
 ---
 
