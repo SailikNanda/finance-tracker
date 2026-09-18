@@ -17,7 +17,7 @@ Works even if your laptop is off. Data is stored on the phone. No backend or int
 
 ## What's changed (v1.3.0 -> v2.8.8)
 
-| Old (v1.3.0) | New (v2.0.0) |
+| Old (v1.3.0) | New (v2.8.8) |
 |---|---|
 | Python backend (FastAPI) | ❌ Removed (runtime) |
 | SQLite (on PC) | IndexedDB (on phone) |
