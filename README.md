@@ -1,4 +1,4 @@
-# Finera v2.8.8— Pure APK, Zero Backend
+# Finera v2.8.8— Pure APK, Zero Backe
 
 Works even if your laptop is off. Data is stored on the phone. No backend or internet required.
 
