@@ -85,7 +85,7 @@ The `backend/` folder remains in the repo but the app no longer uses it at runti
 Two scripts handle everything — no manual version editing required.
 
 ### push-updates.bat — push code changes only
-Double-click (or run `push-updates.bat "commit message"` from a terminal). It commits all changes and pushes to GitHub. No version bump, no release.
+Double-click (or run `push-updates.bat "commit message"` from a terminal). It commits every change and pushes to GitHub. No version bump, no release.
 
 ### release-apk.bat — full release (recommended)
 Double-click, type a version like `2.0.1`, press Enter. The script does everything automatically:
