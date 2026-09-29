@@ -58,7 +58,7 @@ APK output: `frontend\android\app\build\outputs\apk\debug\app-debug.apk`
 Copy the APK file to your phone (USB, Google Drive, email). Open it with a file manager and install. You may need to enable "Unknown Sources" or allow installing apps from file manager.
 
 ### 5. Open the app
-Look for the "Finera" app on your phone. When opened, the AI tab is the default — tap to use.
+Look for the "Finera" app on your phone. When opened, the AI tab is the default — just tap to use.
 
 ---
 
