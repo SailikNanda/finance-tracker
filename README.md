@@ -109,7 +109,7 @@ Requirements (one-time): `gh` CLI (https://cli.github.com) with `gh auth login`.
 - Currency rate cache -> localStorage
 - Default currency choice -> localStorage
 
-Everything stays on your phone. Nothing is uploaded to the cloud or copied to your PC.
+Everything remains on your phone. Nothing is uploaded to the cloud or copied to your PC.
 
 Phone reset or factory restore will erase data. To back up:
 - Go to Settings -> Data backup -> Export PDF (report) or Export JSON (backup)
