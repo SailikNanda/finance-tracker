@@ -127,7 +127,7 @@ Open the app and go to the More tab (Settings):
    - Get a key at: https://tavily.com (free tier: 1000 searches/month, no card required)
 3. Save
 
-Keys are stored locally in the phone's localStorage. They are never sent to any backend.
+Keys are stored locally in your phone's localStorage. They are never sent to any backend.
 
 ---
 
