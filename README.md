@@ -110,7 +110,7 @@ Requirements (one-time): `gh` CLI (https://cli.github.com) with `gh auth login`.
 
 ## Where data is stored
 
-- Transactions -> IndexedDB (Chrome WebView internal storage on the phone)
+- Transactions → IndexedDB (Chrome WebView internal storage on the phone)
 - API keys (Groq, Tavily) -> localStorage
 - Currency rate cache -> localStorage
 - Default currency choice -> localStorage
