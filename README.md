@@ -83,7 +83,7 @@ Live rates -> Direct Tavily API call (your key)
 Laptop off? No problem — the app continues to work.
 ```
 
-The `backend/` folder remains in the repo but the app no longer uses it at runtime. It's retained for reference and future needs.
+The `backend/` folder remains in the repo but the app no longer uses it at runtime. It is retained for reference and future needs.
 
 ---
 
