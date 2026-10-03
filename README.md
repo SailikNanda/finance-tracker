@@ -118,7 +118,7 @@ Requirements (one-time): `gh` CLI (https://cli.github.com) with `gh auth login`.
 
 Everything stays on your phone. Nothing is uploaded to the cloud or copied to your PC.
 
-Phone reset or factory restore will erase data. To back up:
+A phone reset or factory restore will erase data. To back up:
 - Go to Settings → Data backup → Export PDF (report) or Export JSON (backup)
 - Save the file to Google Drive / SD card / PC
 - Restore with Import JSON when needed
