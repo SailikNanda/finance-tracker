@@ -7,6 +7,7 @@ It works even when your laptop is off. Data is stored on the phone. No backend o
   <img src="https://img.shields.io/badge/Offline-Capable-36D1DC?style=for-the-badge" alt="Offline Capable" />
   <img src="https://img.shields.io/badge/Version-2.8.8-F09819?style=for-the-badge" alt="Version 2.8.8" />
   <img src="https://img.shields.io/badge/Platform-Android-3DDC84?style=for-the-badge&logo=android&logoColor=white" alt="Android" />
+  <img src="https://img.shields.io/badge/License-MIT-3DDC84?style=for-the-badge&logo=opensourceinitiative&logoColor=white" alt="MIT License" />
 </p>
 
 ---
