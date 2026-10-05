@@ -163,7 +163,7 @@ Keys are stored locally in your phone's localStorage. They are never sent to any
 | **README.md** (this file) | Overview, quick start |
 | **[INSTALL.md](INSTALL.md)** | Detailed setup (in English) |
 
-The `backend/` folder is retained for reference.
+The `backend/` folder is kept for reference.
 
 ---
 
