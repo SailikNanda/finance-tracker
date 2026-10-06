@@ -110,7 +110,7 @@ Requirements (one-time): `gh` CLI (https://cli.github.com) with `gh auth login`.
 
 ---
 
-## Where data is stored
+## Where Data Is Stored
 
 - Transactions → IndexedDB (Chrome WebView internal storage on the phone)
 - API keys (Groq, Tavily) → localStorage
