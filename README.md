@@ -70,7 +70,7 @@ Look for the "Finera" app on your phone. When opened, the AI tab is the default 
 
 ---
 
-## How it works (architecture)
+## How It Works (architecture)
 
 ```
 App opens on the phone
