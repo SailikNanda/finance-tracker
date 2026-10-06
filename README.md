@@ -167,7 +167,7 @@ The `backend/` folder is kept for reference.
 
 ---
 
-## Tech stack
+## Tech Stack
 
 - React 18 + Vite 5
 - framer-motion (animations)
