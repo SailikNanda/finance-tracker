@@ -37,7 +37,7 @@ It works even when your laptop is off. Data is stored locally on the phone. No b
 
 ---
 
-## Quick start (5 minutes)
+## Quick Start (5 minutes)
 
 ### 1. Install Java JDK 17 (one-time)
 Download and install from https://adoptium.net. Use default settings and restart your PC.
