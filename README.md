@@ -88,7 +88,7 @@ The `backend/` folder remains in the repo but the app no longer uses it at runti
 
 ---
 
-## Release system (one-click)
+## Release System (one-click)
 
 Two scripts handle everything — no manual version editing needed.
 
