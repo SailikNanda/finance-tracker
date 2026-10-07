@@ -1,3 +1,5 @@
+<img src="https://capsule-render.vercel.app/api?type=rect&color=0:5B86E5,50:36D1DC,100:F09819&height=3&width=100%" alt="divider" />
+
 # Finera v2.8.8 — Pure APK, Zero Backend
 
 It works even when your laptop is off. Data is stored locally on the phone. No backend or internet connection is required.
