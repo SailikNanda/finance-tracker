@@ -143,7 +143,7 @@ Keys are stored locally in your phone's localStorage. They are never sent to any
 
 ## Features
 
-- 15+ currencies with real-time day-to-day rates (Tavily)
+- 15+ currencies with real-time daily rates (Tavily)
 - AI insights (Groq Qwen 3.6 27B)
 - 6-month savings tips
 - Pie and bar charts for categories
