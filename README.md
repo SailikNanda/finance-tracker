@@ -16,7 +16,7 @@ It works even when your laptop is powered off. Data is stored locally on the pho
 
 ## v2.8.8 Features
 
-- **In-app updates (GitHub)** — when a new release is published, users see **Settings → App update**, tap once to download and install. Data stays intact.
+- **In-app updates (GitHub)** — when a new release is published, users see **Settings → App update**, tap once to download and install. Your data stays intact.
 - **Edit transactions** — pencil icon in History; date can be changed (backdating supported)
 - **Faster AI** — Groq **Qwen 3.8 27B**
 - **Fixed backup dates** — import keeps the original dates
