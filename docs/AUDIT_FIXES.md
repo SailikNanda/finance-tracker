@@ -50,6 +50,7 @@ The audit examined `affb9be37ee83da2d1140eca8cbcfff82f8d604f`. Fixes were applie
 - Android: `assembleDebug testDebugUnitTest` passed with Java 17, SDK 33 and Gradle 8.0.2; one existing JVM smoke test passed. The new updater and credential vault compiled successfully.
 - Release version setter: an isolated fixture verified Android/web/lockfile version agreement and no double increment on repeated invocation.
 - Release signing guard: `assembleRelease --offline` with signing variables absent was rejected before packaging, as required.
+- GitHub CI confirmed the frontend and backend checks. Its initial Android SDK setup requested the removed `tools` package; the workflow now uses setup-android v4, explicit `platform-tools` and JDK-17-compatible command-line tools. See [the latest CI run](https://github.com/SailikNanda/finance-tracker/actions/workflows/verify.yml) for current status.
 
 The PDF worker is approximately 419 kB and is absent from startup requests. The main entry is approximately 189 kB plus the shared motion chunk; these are build sizes, not measured phone startup latency.
 
