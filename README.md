@@ -42,7 +42,7 @@ It works even when your laptop is powered off. Data is stored locally on the pho
 ## Quick Start (5 minutes)
 
 ### 1. Install Java JDK 17 (one-time)
-Download and install from https://adoptium.net. Use default settings and restart your PC.
+Download and install from https://adoptium.net. Use the default settings and restart your PC.
 
 ### 2. Install Android SDK (one-time)
 Download the command-line tools from https://developer.android.com/studio#command-line-tools-only
