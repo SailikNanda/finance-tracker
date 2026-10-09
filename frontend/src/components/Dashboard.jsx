@@ -73,6 +73,7 @@ function Dashboard({ summary, categories, loading, currency, currencies, onCurre
   }
 
   const stats = summary || { total_income: 0, total_expense: 0, balance: 0, savings_rate: 0, transaction_count: 0 }
+  const money = value => Number.isFinite(value) ? `${symbol}${value.toFixed(2)}` : 'Unavailable'
   const chartData = categories.map(c => ({ name: c.category, value: c.total }))
   const totalExpenseForPct = chartData.reduce((s, c) => s + c.value, 0) || 1
 
@@ -105,6 +106,8 @@ function Dashboard({ summary, categories, loading, currency, currencies, onCurre
       </motion.section>
 
       <LiveRateBar currency={currency} currencies={currencies} />
+      {stats.complete === false && <p className="error-message" role="alert">Exchange rates unavailable for {stats.missing_currencies.join(', ')}. Totals cannot be calculated in {currency}; your transactions are safe.</p>}
+      {stats.rate_stale && <p className="settings-desc" role="status">Totals use cached exchange rates from {new Date(stats.rate_updated_at).toLocaleString()}. Refresh rates when online.</p>}
 
       <motion.section
         className="stats-grid"
@@ -114,30 +117,30 @@ function Dashboard({ summary, categories, loading, currency, currencies, onCurre
           type="income"
           icon={<TrendingUpIcon />}
           label="Income"
-          value={`${symbol}${stats.total_income.toFixed(2)}`}
+          value={money(stats.total_income)}
           glowClass="stat-glow--green"
         />
         <StatCard
           type="expense"
           icon={<TrendingUpIcon style={{ transform: 'rotate(180deg)' }} />}
           label="Expenses"
-          value={`${symbol}${stats.total_expense.toFixed(2)}`}
+          value={money(stats.total_expense)}
           glowClass="stat-glow--red"
         />
         <StatCard
           type="balance"
           icon={<WalletIcon />}
           label="Balance"
-          value={`${stats.balance < 0 ? '-' : ''}${symbol}${Math.abs(stats.balance).toFixed(2)}`}
+          value={Number.isFinite(stats.balance) ? `${stats.balance < 0 ? '-' : ''}${money(Math.abs(stats.balance))}` : 'Unavailable'}
           glowClass="stat-glow--blue"
         />
         <StatCard
           type="savings"
           icon={<TargetIcon />}
           label="Savings rate"
-          value={`${stats.savings_rate.toFixed(1)}%`}
+          value={Number.isFinite(stats.savings_rate) ? `${stats.savings_rate.toFixed(1)}%` : 'Unavailable'}
           glowClass="stat-glow--purple"
-          savingsRate={stats.savings_rate}
+          savingsRate={stats.savings_rate || 0}
         />
       </motion.section>
 

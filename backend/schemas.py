@@ -1,22 +1,35 @@
 """Pydantic v2 schemas. Kept separate from DB models."""
 from __future__ import annotations
 from typing import Literal, Optional
-from pydantic import BaseModel, Field, field_validator
+from datetime import datetime
+from pydantic import BaseModel, Field, field_validator, ConfigDict
+from services.currency import SUPPORTED_BASES
 
 TransactionType = Literal["income", "expense"]
 
 
 class TransactionCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True, allow_inf_nan=False)
     name: str = Field(..., min_length=1, max_length=200)
-    amount: float = Field(..., gt=0)
+    amount: float = Field(..., gt=0, le=1e12)
     category: str = Field(..., min_length=1, max_length=80)
     type: TransactionType
-    currency: Optional[str] = Field(default=None, max_length=8)
+    currency: str = Field(default="INR", min_length=3, max_length=3)
+    date: datetime | None = None
 
     @field_validator("name", "category")
     @classmethod
     def strip(cls, v: str) -> str:
-        return v.strip()
+        value = v.strip()
+        if not value: raise ValueError("Must not be blank")
+        return value
+
+    @field_validator("currency")
+    @classmethod
+    def currency_code(cls, value):
+        code = value.strip().upper()
+        if code not in SUPPORTED_BASES: raise ValueError("Unsupported currency")
+        return code
 
 
 class TransactionResponse(BaseModel):
@@ -25,6 +38,7 @@ class TransactionResponse(BaseModel):
     amount: float
     category: str
     type: TransactionType
+    currency: str
     date: str
     month: int
     year: int
@@ -44,6 +58,7 @@ class CategoryTotal(BaseModel):
 
 
 class ApiKeyRequest(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
     api_key: str = Field(..., min_length=10, max_length=500)
 
 
@@ -61,6 +76,7 @@ class CurrencyRates(BaseModel):
 
 
 class CurrencyConvertRequest(BaseModel):
+    model_config = ConfigDict(allow_inf_nan=False)
     amount: float = Field(..., gt=0)
     from_currency: str = Field(..., min_length=3, max_length=3)
     to_currency: str = Field(..., min_length=3, max_length=3)

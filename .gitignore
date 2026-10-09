@@ -7,6 +7,13 @@ __pycache__/
 *.err
 *.out
 .env
+.env.*
+!.env.example
+*.jks
+*.keystore
+database/
+frontend/playwright-report/
+frontend/test-results/
 node_modules/
 finance-tracker/frontend/node_modules/
 finance-tracker/frontend/dist/

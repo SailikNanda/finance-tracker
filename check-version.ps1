@@ -1,75 +1,15 @@
-param([Parameter(Mandatory=$true)][string]$Version)
-
-$ErrorActionPreference = "Stop"
-
+param([Parameter(Mandatory=$true)][ValidatePattern('^\d+\.\d+\.\d+$')][string]$Version)
+$ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $MyInvocation.MyCommand.Path
-$envPath = Join-Path $root "frontend\.env"
-$repo = $null
-if (Test-Path $envPath) {
-    foreach ($line in [System.IO.File]::ReadAllLines($envPath)) {
-        if ($line -match '^VITE_GITHUB_REPO=(.+)$') { $repo = $Matches[1].Trim(); break }
-    }
-}
-# Fallback: derive from git remote if .env missing (e.g. fresh clone)
-if (-not $repo) {
-    try {
-        $url = & git -C $root remote get-url origin 2>$null
-        if ($url -and $url -match 'github\.com[:/](.+?)(?:\.git)?\s*$') { $repo = $Matches[1].Trim() }
-    } catch {}
-}
-if (-not $repo) {
-    Write-Output "[ERROR] VITE_GITHUB_REPO not found in frontend\.env and could not derive from git remote."
-    Write-Output "        Create frontend\.env with: VITE_GITHUB_REPO=SailikNanda/finance-tracker"
-    exit 1
-}
-
-function Get-VersionParts([string]$v) {
-    $v = $v -replace '^v', ''
-    $parts = $v.Split('.')
-    $a = 0; $b = 0; $c = 0
-    if ($parts.Length -gt 0) { $a = [int]$parts[0] }
-    if ($parts.Length -gt 1) { $b = [int]$parts[1] }
-    if ($parts.Length -gt 2) { $c = [int]$parts[2] }
-    return @($a, $b, $c)
-}
-
-function Test-Newer([string]$new, [string]$old) {
-    $pn = Get-VersionParts $new
-    $po = Get-VersionParts $old
-    for ($i = 0; $i -lt 3; $i++) {
-        if ($pn[$i] -ne $po[$i]) { return ($pn[$i] -gt $po[$i]) }
-    }
-    return $false
-}
-
-Write-Output "Checking version $Version against GitHub ($repo)..."
-$latest = ""
+$url = & git -C $root remote get-url origin
+if ($LASTEXITCODE -ne 0 -or $url -notmatch 'github\.com[:/]([^/]+/[^/]+?)(?:\.git)?$') { throw 'Cannot resolve GitHub repository' }
+$repo = $Matches[1]
 try {
-    $ts = [DateTimeOffset]::UtcNow.ToUnixTimeSeconds()
-    $release = Invoke-RestMethod -Uri "https://api.github.com/repos/$repo/releases/latest?_t=$ts" -Headers @{ Accept = 'application/vnd.github+json' } -ErrorAction Stop
-    $latest = [string]$release.tag_name
-} catch {
-    try {
-        $ts = [DateTimeOffset]::UtcNow.ToUnixTimeSeconds()
-        $list = Invoke-RestMethod -Uri "https://api.github.com/repos/$repo/releases?per_page=3&_t=$ts" -Headers @{ Accept = 'application/vnd.github+json' } -ErrorAction Stop
-        if ($list -and $list.Count -gt 0) {
-            $latest = [string]$list[0].tag_name
-        }
-    } catch {
-        Write-Output "[WARN] Could not reach GitHub. Skipping version check (release will still be created)."
-        exit 0
-    }
+    $list = Invoke-RestMethod -Uri "https://api.github.com/repos/$repo/releases?per_page=100" -Headers @{ Accept = 'application/vnd.github+json' }
+} catch { throw 'Could not verify published versions. Check the network before releasing.' }
+$new = [version]$Version
+foreach ($release in $list) {
+    if ($release.draft -or $release.prerelease -or $release.tag_name -notmatch '^v?(\d+\.\d+\.\d+)$') { continue }
+    if ($new -le [version]$Matches[1]) { throw "Version $Version must be higher than every stable published release ($($release.tag_name))" }
 }
-
-if (-not (Test-Newer $Version $latest)) {
-    $latestNum = $latest -replace '^v', ''
-    Write-Output ""
-    Write-Output "[ERROR] Version $Version is NOT newer than the latest release $latest."
-    Write-Output "        GitHub always marks the most recently published release as latest,"
-    Write-Output "        so users on v$latestNum would never see an update."
-    Write-Output "        Use a higher version, e.g. bump it to v$latestNum.*"
-    exit 1
-}
-
-Write-Output "OK: $Version is newer than the latest release ($latest)."
-exit 0
+Write-Output "Version $Version is newer than all stable published releases"

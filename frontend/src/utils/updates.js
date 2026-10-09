@@ -1,155 +1,98 @@
-// GitHub-based update checker.
-// The app queries the GitHub Releases API of the configured repo.
-// When the developer pushes a new tag with an APK asset, users see an
-// "Update available" button and can download + install the new APK in-app.
-
-const REPO = (import.meta.env.VITE_GITHUB_REPO || '').trim()
+import { APP_VERSION } from './version.js'
+const REPO = (import.meta.env?.VITE_GITHUB_REPO || 'SailikNanda/finance-tracker').trim()
 const CACHE_KEY = 'ft_update_check'
-const CACHE_TTL = 5 * 60 * 1000 // re-check every 5 min max
+const CACHE_TTL = 5 * 60 * 1000
+export const hasUpdateRepo = () => /^[\w.-]+\/[\w.-]+$/.test(REPO)
+export const getRepo = () => REPO
+export const getCurrentVersion = () => APP_VERSION.replace(/^v/i, '')
 
-export function hasUpdateRepo() {
-  return !!REPO
-}
-
-export function getRepo() {
-  return REPO
-}
-
-export function getCurrentVersion() {
-  const v = import.meta.env.VITE_APP_VERSION || '2.0.0'
-  return String(v).replace(/^v/i, '')
-}
-
-function parseVersion(v) {
-  const parts = String(v).replace(/^v/i, '').split(/[._-]/).map(n => parseInt(n, 10))
-  while (parts.length < 3) parts.push(0)
-  return parts.map(n => (Number.isFinite(n) ? n : 0))
-}
-
-// Returns > 0 if a > b, < 0 if a < b, 0 if equal.
 export function compareVersions(a, b) {
-  const pa = parseVersion(a)
-  const pb = parseVersion(b)
-  for (let i = 0; i < 3; i++) {
-    if (pa[i] !== pb[i]) return pa[i] - pb[i]
+  const parse = value => String(value).replace(/^v/i, '').split('.').map(Number)
+  const aa = parse(a), bb = parse(b)
+  for (let index = 0; index < 3; index++) {
+    const diff = (aa[index] || 0) - (bb[index] || 0)
+    if (diff) return diff
   }
   return 0
 }
 
-function readCache() { try { return JSON.parse(localStorage.getItem(CACHE_KEY) || '{}') } catch { return {} } }
-function writeCache(obj) { try { localStorage.setItem(CACHE_KEY, JSON.stringify(obj)) } catch {} }
+export function isTrustedReleaseURL(url) {
+  try {
+    const parsed = new URL(url)
+    return parsed.protocol === 'https:' && parsed.hostname === 'github.com' && !parsed.port && !parsed.username && !parsed.password && !parsed.search && !parsed.hash && parsed.pathname.startsWith(`/${REPO}/releases/download/`)
+  } catch { return false }
+}
+
+async function getJSON(path) {
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), 10000)
+  try {
+    const response = await fetch(`https://api.github.com/repos/${REPO}/${path}`, { cache: 'no-store', headers: { Accept: 'application/vnd.github+json' }, signal: controller.signal })
+    if (response.status === 404) return null
+    if (!response.ok) throw new Error(`GitHub returned HTTP ${response.status}`)
+    return await response.json()
+  } finally { clearTimeout(timeout) }
+}
 
 export async function checkForUpdates({ force = false } = {}) {
-  if (!REPO) {
-    return { updateAvailable: false, reason: 'no-repo', currentVersion: getCurrentVersion() }
-  }
-
-  if (force) {
-    clearUpdateCache()
-  } else {
-    const cache = readCache()
-    if (cache.checkedAt && Date.now() - cache.checkedAt < CACHE_TTL) {
-      const cached = { ...cache.payload, fromCache: true }
-      cached.currentVersion = getCurrentVersion()
-      cached.updateAvailable = compareVersions(cached.latestVersion || '', cached.currentVersion) > 0
-      cached.reason = cached.updateAvailable ? 'new-version' : 'up-to-date'
-      return cached
-    }
-  }
-
-  try {
-    const current = getCurrentVersion()
-    const ts = Date.now()
-
-    // 1) Query /releases/latest first with no-store cache control
-    let release = null
+  const currentVersion = getCurrentVersion()
+  if (!hasUpdateRepo()) return { updateAvailable: false, reason: 'no-repo', currentVersion }
+  if (!force) {
     try {
-      const res = await fetch(`https://api.github.com/repos/${REPO}/releases/latest?_t=${ts}`, {
-        cache: 'no-store',
-        headers: { Accept: 'application/vnd.github+json' },
-      })
-      if (res.ok) {
-        release = await res.json()
+      const cache = JSON.parse(localStorage.getItem(CACHE_KEY) || '{}')
+      if (cache.repo === REPO && Date.now() - cache.checkedAt < CACHE_TTL && cache.payload.latestVersion) {
+        const updateAvailable = compareVersions(cache.payload.latestVersion, currentVersion) > 0
+        return { ...cache.payload, currentVersion, updateAvailable, reason: updateAvailable ? 'new-version' : 'up-to-date', fromCache: true }
       }
-    } catch (err) {
-      console.warn('Failed to fetch releases/latest:', err)
-    }
-
-    // 2) If latest is missing, or not newer, check /releases list (catches recently published releases that CDN hasn't marked latest yet)
-    let candidateRelease = release
-    const latestVersion = release ? String(release.tag_name || '').replace(/^v/i, '') : ''
-    const latestIsNewer = latestVersion ? compareVersions(latestVersion, current) > 0 : false
-
-    if (!latestIsNewer) {
-      try {
-        const listRes = await fetch(`https://api.github.com/repos/${REPO}/releases?per_page=5&_t=${ts}`, {
-          cache: 'no-store',
-          headers: { Accept: 'application/vnd.github+json' },
-        })
-        if (listRes.ok) {
-          const list = await listRes.json()
-          if (Array.isArray(list) && list.length > 0) {
-            for (const r of list) {
-              if (r.draft || r.prerelease) continue
-              const rVer = String(r.tag_name || '').replace(/^v/i, '')
-              const hasApk = (r.assets || []).some(a => /\.apk$/i.test(a.name || ''))
-              if (hasApk && compareVersions(rVer, current) > 0) {
-                candidateRelease = r
-                break
-              }
-            }
-          }
-        }
-      } catch (e) {
-        console.warn('Fallback releases list fetch failed:', e)
-      }
-    }
-
-    if (!candidateRelease) {
-      return { updateAvailable: false, reason: 'up-to-date', currentVersion: current }
-    }
-
-    const apkAsset = (candidateRelease.assets || []).find(a =>
-      /\.apk$/i.test(a.name || '') && a.browser_download_url
-    )
-    if (!apkAsset) {
-      return { updateAvailable: false, reason: 'no-apk', currentVersion: current }
-    }
-
-    const shaAsset = (candidateRelease.assets || []).find(a =>
-      /\.sha256$/i.test(a.name || '') && a.browser_download_url
-    )
-
-    const resolvedLatest = String(candidateRelease.tag_name || '').replace(/^v/i, '')
-    const updateAvailable = compareVersions(resolvedLatest, current) > 0
-
-    const payload = {
-      updateAvailable,
-      reason: updateAvailable ? 'new-version' : 'up-to-date',
-      currentVersion: current,
-      latestVersion: resolvedLatest,
-      url: apkAsset.browser_download_url,
-      checksumUrl: shaAsset ? shaAsset.browser_download_url : null,
-      size: apkAsset.size || 0,
-      publishedAt: candidateRelease.published_at || null,
-      name: candidateRelease.name || `v${resolvedLatest}`,
-      body: candidateRelease.body || '',
-    }
-
-    writeCache({ checkedAt: Date.now(), payload })
-    return payload
-  } catch (e) {
-    console.warn('Update check failed:', e)
-    return { updateAvailable: false, reason: 'error', currentVersion: getCurrentVersion(), error: e.message }
+    } catch {}
   }
+  try {
+    // A failed lookup is an error, never evidence that the app is current.
+    let release
+    try { release = await getJSON('releases/latest') } catch { release = null }
+    let list = []
+    if (!release || compareVersions(release.tag_name, currentVersion) <= 0) {
+      const result = await getJSON('releases?per_page=20')
+      if (result && !Array.isArray(result)) throw new Error('Invalid release response')
+      list = result || []
+    }
+    const releases = [release, ...list].filter(row => row && !row.draft && !row.prerelease && /^v?\d+\.\d+\.\d+$/.test(row.tag_name || ''))
+      .sort((a, b) => compareVersions(b.tag_name, a.tag_name))
+    const candidate = releases[0]
+    if (!candidate) return { updateAvailable: false, reason: 'no-release', currentVersion }
+    const asset = (candidate.assets || []).find(row => /\.apk$/i.test(row.name || '') && isTrustedReleaseURL(row.browser_download_url))
+    if (!asset) return { updateAvailable: false, reason: 'no-apk', currentVersion }
+    const sha = (candidate.assets || []).find(row => row.name === `${asset.name}.sha256` && isTrustedReleaseURL(row.browser_download_url))
+    const latestVersion = candidate.tag_name.replace(/^v/i, '')
+    const updateAvailable = compareVersions(latestVersion, currentVersion) > 0
+    const payload = {
+      updateAvailable, reason: updateAvailable ? 'new-version' : 'up-to-date', currentVersion, latestVersion,
+      url: asset.browser_download_url, checksumUrl: sha?.browser_download_url || null,
+      sha256: /^sha256:[a-f\d]{64}$/i.test(asset.digest || '') ? asset.digest.slice(7).toLowerCase() : null,
+      size: asset.size || 0, publishedAt: candidate.published_at, name: candidate.name, body: candidate.body || '',
+    }
+    try { localStorage.setItem(CACHE_KEY, JSON.stringify({ repo: REPO, checkedAt: Date.now(), payload })) } catch {}
+    return payload
+  } catch (error) { return { updateAvailable: false, reason: 'error', currentVersion, error: error.message || 'Update check failed' } }
 }
 
-export function clearUpdateCache() {
-  try { localStorage.removeItem(CACHE_KEY) } catch {}
+export async function getUpdateChecksum(info) {
+  if (/^[a-f\d]{64}$/i.test(info.sha256 || '')) return info.sha256.toLowerCase()
+  if (!isTrustedReleaseURL(info.checksumUrl)) throw new Error('This release has no verifiable SHA-256 checksum. Contact the developer before installing it.')
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), 10000)
+  try {
+    const response = await fetch(info.checksumUrl, { signal: controller.signal, cache: 'no-store' })
+    if (!response.ok) throw new Error('Could not retrieve the update checksum')
+    const text = await response.text()
+    const hash = text.trim().match(/^([a-f\d]{64})(?:\s|$)/i)?.[1]
+    if (!hash) throw new Error('Invalid update checksum')
+    return hash.toLowerCase()
+  } finally { clearTimeout(timer) }
 }
-
+export function clearUpdateCache() { try { localStorage.removeItem(CACHE_KEY) } catch {} }
 export function formatSize(bytes) {
   if (!bytes) return ''
-  const mb = bytes / (1024 * 1024)
+  const mb = bytes / 1048576
   return mb >= 1 ? `${mb.toFixed(1)} MB` : `${Math.max(1, Math.round(bytes / 1024))} KB`
 }

@@ -16,11 +16,34 @@ android {
             ignoreAssetsPattern '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    signingConfigs {
+        release {
+            def keystore = System.getenv('FINERA_KEYSTORE')
+            if (keystore) {
+                storeFile file(keystore)
+                storePassword System.getenv('FINERA_STORE_PASSWORD')
+                keyAlias System.getenv('FINERA_KEY_ALIAS')
+                keyPassword System.getenv('FINERA_KEY_PASSWORD')
+            }
+        }
+    }
     buildTypes {
         release {
+            signingConfig signingConfigs.release
+            debuggable false
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
+    }
+}
+
+// A public release must never silently fall back to a new debug certificate.
+gradle.taskGraph.whenReady { graph ->
+    if (graph.allTasks.any { it.name == 'assembleRelease' || it.name == 'packageRelease' }) {
+        ['FINERA_KEYSTORE', 'FINERA_STORE_PASSWORD', 'FINERA_KEY_ALIAS', 'FINERA_KEY_PASSWORD'].each { name ->
+            if (!System.getenv(name)) throw new GradleException("Set ${name} to sign a release with the existing installation key")
+        }
+        if (!file(System.getenv('FINERA_KEYSTORE')).exists()) throw new GradleException('Release keystore not found')
     }
 }
 

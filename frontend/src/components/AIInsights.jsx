@@ -1,7 +1,9 @@
-﻿import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { BarChartIcon, LightbulbIcon, ZapIcon, BookOpenIcon, TargetIcon, RefreshIcon, SendIcon } from './Icons'
 import { getFinancialInsights, getSavingsSuggestions, hasGroqKey, chatWithFinancialAssistant } from '../utils/groq'
 import * as db from '../utils/db'
+import { requireComplete } from '../utils/finance.js'
+import { hasAIConsent } from '../utils/privacy.js'
 
 function ReportView({ text }) {
   if (!text) return null
@@ -46,7 +48,7 @@ function ReportView({ text }) {
   )
 }
 
-function AIInsights({ month, year, symbol }) {
+function AIInsights({ month, year, symbol, currency = 'INR', ledgerRevision = 0, credentialRevision = 0, isActive = true }) {
   const [insights, setInsights] = useState(null)
   const [suggestions, setSuggestions] = useState(null)
   const [loadingInsights, setLoadingInsights] = useState(false)
@@ -71,12 +73,12 @@ function AIInsights({ month, year, symbol }) {
     e.preventDefault()
     if (!chatInput.trim() || sendingChat) return
     const userMsg = { role: 'user', content: chatInput.trim() }
-    const updated = [...chatMessages, userMsg]
+    const updated = [...chatMessages, userMsg].slice(-24)
     setChatMessages(updated)
     setChatInput('')
     setSendingChat(true)
     try {
-      const response = await chatWithFinancialAssistant(updated)
+      const response = await chatWithFinancialAssistant(updated, { currency })
       setChatMessages([...updated, { role: 'assistant', content: response }])
     } catch (errVal) {
       setChatMessages([...updated, { role: 'assistant', content: `Error: ${errVal.message || 'Something went wrong.'}` }])
@@ -87,24 +89,26 @@ function AIInsights({ month, year, symbol }) {
 
   // Abort previous load if month/year changes quickly
   const loadAbortRef = useRef(null)
-  const load = async () => {
+  const load = async (force = false) => {
     if (loadAbortRef.current) loadAbortRef.current.aborted = true
     const token = { aborted: false }
     loadAbortRef.current = token
     setLoadingInsights(true)
     setLoadingSuggestions(true)
     setErr('')
+    setInsights(null)
+    setSuggestions(null)
     try {
       // Fully parallel: current + previous + 6-month buckets in one go (was serial waterfall)
       const [cur, prev, sug] = await Promise.all([
-        buildCurrentData(month, year),
-        buildPreviousData(month, year),
-        buildMonthlyData(),
+        buildCurrentData(month, year, currency),
+        buildPreviousData(month, year, currency),
+        db.getMonthlyBuckets(6, currency, month, year),
       ])
       if (token.aborted) return
       const [i, s] = await Promise.all([
-        getFinancialInsights(cur, prev, month, year),
-        getSavingsSuggestions(sug),
+        getFinancialInsights(cur, prev, month, year, { force: force === true, currency }),
+        getSavingsSuggestions(sug, { force: force === true, currency }),
       ])
       if (token.aborted) return
       setInsights(i)
@@ -121,7 +125,10 @@ function AIInsights({ month, year, symbol }) {
     }
   }
 
-  useEffect(() => { load(); return () => { if (loadAbortRef.current) loadAbortRef.current.aborted = true } }, [month, year])
+  useEffect(() => {
+    if (isActive) load()
+    return () => { if (loadAbortRef.current) loadAbortRef.current.aborted = true }
+  }, [month, year, currency, ledgerRevision, credentialRevision, isActive])
 
   const isLoading = activeView === 'insights' ? loadingInsights : (activeView === 'suggestions' ? loadingSuggestions : false)
 
@@ -133,10 +140,10 @@ function AIInsights({ month, year, symbol }) {
           <p>
             {insights?.ai_configured
               ? 'Personalized analysis powered by ' + (insights.model || 'Groq')
-              : 'Showing built-in tips. Add a free Groq API key in Settings to unlock live AI analysis.'}
+              : (insights?.error || 'Built-in tips. Add a Groq key and enable AI data sharing in Settings for personalized analysis.')}
           </p>
         </div>
-        <button className="refresh-btn" onClick={load} disabled={isLoading}>
+        <button className="refresh-btn" onClick={() => load(true)} disabled={isLoading}>
           <RefreshIcon />
           <span>Refresh</span>
         </button>
@@ -278,16 +285,17 @@ function AIInsights({ month, year, symbol }) {
                   value={chatInput}
                   onChange={(e) => setChatInput(e.target.value)}
                   placeholder={sendingChat ? "AI is typing..." : "Type your financial question..."}
-                  disabled={sendingChat || !insights?.ai_configured}
+                  maxLength={2000}
+                  disabled={sendingChat || !hasGroqKey() || !hasAIConsent()}
                 />
-                <button type="submit" disabled={sendingChat || !chatInput.trim() || !insights?.ai_configured}>
+                <button type="submit" disabled={sendingChat || !chatInput.trim() || !hasGroqKey() || !hasAIConsent()}>
                   <SendIcon />
                   <span className="send-btn-text">Send</span>
                 </button>
               </form>
-              {!insights?.ai_configured && (
+              {(!hasGroqKey() || !hasAIConsent()) && (
                 <div className="chat-no-key-warning">
-                  Add your Groq API key in Settings to use the Financial Chat.
+                  Add your Groq key and enable AI data sharing in Settings to use chat. Recent transaction details are sent with your question.
                 </div>
               )}
             </div>
@@ -318,48 +326,16 @@ function AIInsights({ month, year, symbol }) {
   )
 }
 
-async function buildCurrentData(month, year) {
-  // Single DB read (was 2: getTransactions + getCategories)
-  const list = await db.getTransactions(month, year)
-  const categories = {}
-  let income = 0, expense = 0
-  for (const r of list) {
-    if (r.amount > 0) income += r.amount
-    else {
-      const amt = Math.abs(r.amount)
-      expense += amt
-      categories[r.category] = (categories[r.category] || 0) + amt
-    }
-  }
-  return { income, expense, categories, transactions: list }
+async function buildCurrentData(month, year, currency) {
+  const data = await db.getMonthOverview(month, year, currency)
+  const summary = requireComplete(data.summary)
+  return { income: summary.total_income, expense: summary.total_expense, categories: Object.fromEntries(data.categories.map(c => [c.category, c.total])), currency }
 }
 
-async function buildPreviousData(month, year) {
+async function buildPreviousData(month, year, currency) {
   const pm = month > 1 ? month - 1 : 12
   const py = month > 1 ? year : year - 1
-  const list = await db.getTransactions(pm, py)
-  let income = 0, expense = 0
-  for (const r of list) {
-    if (r.amount > 0) income += r.amount
-    else expense += Math.abs(r.amount)
-  }
-  return { income, expense }
-}
-
-async function buildMonthlyData() {
-  // Use optimized bucket helper (single scan, early exit) instead of full getAll+sort
-  if (db.getMonthlyBuckets) return await db.getMonthlyBuckets(6)
-  const all = await db.getAllTransactions()
-  const buckets = new Map()
-  for (const r of all) {
-    const k = `${r.year}-${String(r.month).padStart(2, '0')}`
-    const b = buckets.get(k) || { month: r.month, year: r.year, income: 0, expense: 0 }
-    if (r.amount > 0) b.income += r.amount
-    else b.expense += Math.abs(r.amount)
-    buckets.set(k, b)
-  }
-  const sorted = Array.from(buckets.values()).sort((a, b) => (b.year - a.year) || (b.month - a.month))
-  return sorted.slice(0, 6)
+  return buildCurrentData(pm, py, currency)
 }
 
 export default AIInsights

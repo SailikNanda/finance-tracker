@@ -1,1 +1,2 @@
-export const APP_VERSION = import.meta.env.VITE_APP_VERSION || '2.0.0'
+import packageInfo from '../../package.json' with { type: 'json' }
+export const APP_VERSION = packageInfo.version

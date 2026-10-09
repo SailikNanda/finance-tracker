@@ -1,4 +1,4 @@
-﻿"""SQLAlchemy 2.0 ORM models and engine setup."""
+"""SQLAlchemy 2.0 ORM models and engine setup."""
 from __future__ import annotations
 from datetime import datetime
 from pathlib import Path
@@ -32,7 +32,8 @@ class Transaction(Base):
     amount: Mapped[float] = mapped_column(Float, nullable=False)
     category: Mapped[str] = mapped_column(String(80), nullable=False)
     type: Mapped[str] = mapped_column(String(8), nullable=False)
-    date: Mapped[str] = mapped_column(String(32), nullable=False)
+    date: Mapped[str] = mapped_column(String(40), nullable=False)
+    currency: Mapped[str] = mapped_column(String(3), nullable=False, default="INR", server_default="INR")
     month: Mapped[int] = mapped_column(Integer, nullable=False)
     year: Mapped[int] = mapped_column(Integer, nullable=False)
 
@@ -125,6 +126,11 @@ def cleanup_old_rates(db: Session, keep_per_base: int = 20) -> None:
 def init_db() -> None:
     """Create all tables. Idempotent. For real migrations use Alembic."""
     Base.metadata.create_all(engine)
+    # Non-destructive migration for databases made by the old backend.
+    from sqlalchemy import inspect, text
+    if "currency" not in {column["name"] for column in inspect(engine).get_columns("transactions")}:
+        with engine.begin() as connection:
+            connection.execute(text("ALTER TABLE transactions ADD COLUMN currency VARCHAR(3) NOT NULL DEFAULT 'INR'"))
 
 
 def get_db():

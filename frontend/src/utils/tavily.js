@@ -1,8 +1,8 @@
-﻿// Direct Tavily client - calls Tavily API straight from the phone.
+// Direct Tavily client - calls Tavily API straight from the phone.
 // Real-time, day-to-day currency rates via web search.
 
+import { getCredential, setCredential } from './credentials.js'
 const TAVILY_URL = 'https://api.tavily.com/search'
-const KEY_STORAGE = 'ft_tavily_api_key'
 const CACHE_KEY = 'ft_tavily_cache'
 const CACHE_TTL = 60 * 60 * 1000
 const TAVILY_TIMEOUT = 8000
@@ -35,14 +35,10 @@ function cleanKey(k) {
 }
 
 export function getTavilyKey() {
-  try { return cleanKey(localStorage.getItem(KEY_STORAGE) || '') } catch { return '' }
+  return cleanKey(getCredential('tavily'))
 }
-export function setTavilyKey(k) {
-  try {
-    const v = cleanKey(k)
-    if (v) localStorage.setItem(KEY_STORAGE, v)
-    else localStorage.removeItem(KEY_STORAGE)
-  } catch {}
+export async function setTavilyKey(k) {
+  await setCredential('tavily', cleanKey(k))
 }
 export function hasTavilyKey() {
   return !!getTavilyKey()
@@ -232,7 +228,8 @@ export async function getRates(base = 'USD', { force = false } = {}) {
 
   const cache = readCache()
   const hit = cache[base]
-  if (!force && hit && Date.now() - hit.cachedAt < CACHE_TTL) return hit.data
+  const validHit = hit?.data?.base === base && hit.data.rates && Object.values(hit.data.rates).every(rate => Number.isFinite(Number(rate)) && Number(rate) > 0)
+  if (!force && validHit && Date.now() - hit.cachedAt < CACHE_TTL) return { ...hit.data, stale: false }
 
   // 1) Try open.er-api.com first (reliable real-time data, no API key required)
   try {
@@ -243,13 +240,14 @@ export async function getRates(base = 'USD', { force = false } = {}) {
         const targetCodes = Object.keys(CURRENCY_NAMES).filter(c => c !== base)
         const filtered = {}
         for (const c of targetCodes) {
-          if (c in data.rates) filtered[c] = Number(data.rates[c])
+          const rate = Number(data.rates[c])
+          if (Number.isFinite(rate) && rate > 0) filtered[c] = rate
         }
         if (Object.keys(filtered).length > 0) {
           const parsedData = {
             base,
             rates: filtered,
-            updated_at: new Date(data.time_last_update_unix * 1000).toISOString(),
+            updated_at: new Date(Number(data.time_last_update_unix || Date.now() / 1000) * 1000).toISOString(),
             provider: 'exchangerate-api',
           }
           cache[base] = { data: parsedData, cachedAt: Date.now() }
@@ -263,10 +261,15 @@ export async function getRates(base = 'USD', { force = false } = {}) {
   }
 
   // 2) Fallback to Tavily
-  const data = await fetchFromTavily(base)
-  cache[base] = { data, cachedAt: Date.now() }
-  writeCache(cache)
-  return data
+  try {
+    const data = await fetchFromTavily(base)
+    cache[base] = { data, cachedAt: Date.now() }
+    writeCache(cache)
+    return data
+  } catch (error) {
+    if (validHit) return { ...hit.data, stale: true, provider: 'db-cache' }
+    throw error
+  }
 }
 
 export async function convert(amount, from, to) {

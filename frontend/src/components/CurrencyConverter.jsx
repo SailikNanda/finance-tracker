@@ -28,41 +28,46 @@ function CurrencyConverter({ currencies }) {
   const [updatedAt, setUpdatedAt] = useState(null)
   const [provider, setProvider] = useState(null)
   const [hasKey, setHasKey] = useState(hasTavilyKey())
-  const abortRef = useRef(false)
+  const requestRef = useRef(0)
+  const [rateBase, setRateBase] = useState(null)
+  const [stale, setStale] = useState(false)
 
   const fetchRates = useCallback(async (base, force = false) => {
-    abortRef.current = false
+    const requestId = ++requestRef.current
     setLoading(true)
+    setRatesData(null)
     setError(null)
     try {
       const data = await getRates(base, { force })
-      if (abortRef.current) return
+      if (requestId !== requestRef.current) return
       setRatesData(data.rates || {})
+      setRateBase(base)
+      setStale(!!data.stale)
       setUpdatedAt(data.updated_at || null)
       setProvider(data.provider || 'unknown')
-      setHasKey(true)
+      setHasKey(hasTavilyKey())
     } catch (e) {
-      if (abortRef.current) return
+      if (requestId !== requestRef.current) return
       setError(e.message || 'Failed to load rates')
       setRatesData(null)
       if (/No Tavily API key/i.test(e.message || '')) setHasKey(false)
     } finally {
-      if (!abortRef.current) setLoading(false)
+      if (requestId === requestRef.current) setLoading(false)
     }
   }, [])
 
   useEffect(() => {
     fetchRates(fromCurrency)
     return () => {
-      abortRef.current = true
+      requestRef.current++
     }
   }, [fromCurrency, fetchRates])
 
   const rate = useMemo(() => {
-    if (!ratesData) return 0
     if (fromCurrency === toCurrency) return 1
+    if (!ratesData || rateBase !== fromCurrency) return 0
     return ratesData[toCurrency] || 0
-  }, [ratesData, fromCurrency, toCurrency])
+  }, [ratesData, rateBase, fromCurrency, toCurrency])
 
   const result = useMemo(() => (parseFloat(amount) || 0) * rate, [amount, rate])
 
@@ -89,7 +94,7 @@ function CurrencyConverter({ currencies }) {
           {loading && <span className="converter-tag converter-tag--loading">Loading...</span>}
           {!loading && !error && ratesData && (
             <span className="converter-tag">
-              {provider === 'tavily' ? 'Live' : 'Offline'} rates &middot; {formatTimeAgo(updatedAt)}
+              {stale ? 'Cached' : 'Live'} rates &middot; {formatTimeAgo(updatedAt)}
               {provider ? ' \u2022 ' + provider : ''}
             </span>
           )}
@@ -101,9 +106,7 @@ function CurrencyConverter({ currencies }) {
 
       {error && (
         <div className="converter-error">
-          {hasKey
-            ? `Could not load live rates: ${error}`
-            : 'Add a Tavily API key in Settings to get real-time day-to-day rates.'}
+          Could not load rates: {error}
         </div>
       )}
 
@@ -136,7 +139,7 @@ function CurrencyConverter({ currencies }) {
           <label>You get</label>
           <div className="converter-input-wrapper result">
             <span className="converter-symbol">{getSymbol(toCurrency)}</span>
-            <input type="text" value={rate ? result.toFixed(2) : '0.00'} readOnly />
+            <input type="text" value={rate ? result.toFixed(2) : 'Unavailable'} readOnly />
           </div>
           <select value={toCurrency} onChange={(e) => setToCurrency(e.target.value)} className="converter-select">
             {currencies.map(c => (
@@ -180,7 +183,7 @@ function CurrencyConverter({ currencies }) {
         <h3>Popular rates (per 1 {fromCurrency})</h3>
         <div className="rates-list">
           {popular.map(c => {
-            const r = ratesData ? ratesData[c.code] : 0
+            const r = ratesData && rateBase === fromCurrency ? ratesData[c.code] : 0
             return (
               <div key={c.code} className="rate-item">
                 <span className="rate-currency">{c.code}</span>

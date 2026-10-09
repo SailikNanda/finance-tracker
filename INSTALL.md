@@ -3,7 +3,7 @@
 ## Pre-requisites (one-time, on your PC)
 
 You will need on your PC:
-- **Node.js 16+** - https://nodejs.org
+- **Node.js 22.12+** - https://nodejs.org
 - **Java JDK 17** - https://adoptium.net
 - **Android SDK** - https://developer.android.com/studio#command-line-tools-only
 
@@ -16,7 +16,7 @@ Install everything, then restart your PC.
 ### Step 1: First build
 1. In File Explorer, go to the `S:\Finance Tracker\finance-tracker\` folder
 2. **Double-click** the `build-apk.bat` file
-3. A window opens and automatically does 4 tasks (npm install, vite build, cap sync, gradle)
+3. A window opens and automatically does 4 tasks (npm ci, vite build, cap sync, gradle)
 4. Takes 3-5 minutes the first time (30 seconds afterwards)
 5. At the end you'll see the message: "APK location: ....."
 
@@ -53,7 +53,7 @@ adb install "S:\Finance Tracker\finance-tracker\frontend\android\app\build\outpu
 ### Step 3: Open the app
 - You'll find the "Finera" app on your phone
 - Tap to open it
-- The AI Insights tab opens by default
+- The Home tab opens by default
 
 ### Step 4: Add API keys
 - Go to the More tab
@@ -70,7 +70,7 @@ If you change the code (new feature, bug fix):
 1. Edit the code in `frontend/src/`
 2. Double-click `build-apk.bat` (30 seconds)
 3. A new APK is created in the same folder
-4. Install that APK on your phone (it replaces the old one, **your data is safe**)
+4. Install that APK on your phone (a compatible signing key and newer version code are required; export a JSON backup first)
 
 ---
 
@@ -94,11 +94,13 @@ If you change the code (new feature, bug fix):
 
 ### APK won't install on the phone
 - Settings > Security > Unknown Sources enable it
-- Uninstall the old "Finera" app and try again
+- Export a JSON backup first. Keep the installed app when an update has a different signing key; rebuild using the original keystore. Uninstalling erases the local ledger.
+
+For public releases, use `release-apk.bat` and the original installation keystore. `build-apk.bat` creates a development debug build.
 
 ### App crashes when opening
 - Enable Developer Options > USB Debugging on your phone and connect to the PC
-- On the PC run: `adb logcat | finera` (shows the logs)
+- On the PC run: `adb logcat | Select-String "finera"` (shows the logs)
 
 ---
 
@@ -119,3 +121,9 @@ If you change the code (new feature, bug fix):
 - IndexedDB (local storage)
 - Groq (AI)
 - Tavily (currency)
+
+## Backup and AI privacy
+
+More → Export JSON creates a restorable backup. Import JSON merges while skipping existing identifiers; Replace mode requires confirmation. A malformed file leaves the ledger unchanged. PDF is a readable report, not a restore format.
+
+Provider keys are encrypted on Android 6+. Browsers and Android 5 keep keys for the session only. AI sharing defaults to off. Enable it only after reviewing the Settings disclosure: reports send totals/categories to Groq, chat sends recent record details, and eligible questions may go to Tavily.

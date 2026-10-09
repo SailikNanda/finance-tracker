@@ -1,15 +1,18 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { KeyIcon, SaveIcon, TrashIcon, EyeIcon, EyeOffIcon, CheckIcon, SearchIcon, DownloadIcon, ZapIcon, RefreshIcon } from './Icons'
 import { getGroqKey, setGroqKey, hasGroqKey, testConnection as testGroq } from '../utils/groq'
 import { getTavilyKey, setTavilyKey, hasTavilyKey, testConnection as testTavily } from '../utils/tavily'
 import * as db from '../utils/db'
 import { APP_VERSION } from '../utils/version'
-import { checkForUpdates, formatSize, getCurrentVersion, clearUpdateCache } from '../utils/updates'
-import { canDownloadInApp, downloadApk, pollDownload, installApk } from '../utils/apkUpdater'
-import { exportTransactionsPDF } from '../utils/pdfExport'
+import { checkForUpdates, formatSize, getUpdateChecksum, clearUpdateCache } from '../utils/updates'
+import { canDownloadInApp, downloadApk, pollDownload, installApk, cancelDownload } from '../utils/apkUpdater'
+import { saveBlob } from '../utils/files.js'
+import { hasAIConsent, setAIConsent } from '../utils/privacy.js'
+import { usesSessionKeys } from '../utils/credentials.js'
 
 function Settings({ currency, currencies, onCurrencyChange, refreshData }) {
+  const [consent, setConsent] = useState(hasAIConsent())
   return (
     <div className="settings surface">
       <div className="settings-head">
@@ -81,6 +84,12 @@ function Settings({ currency, currencies, onCurrencyChange, refreshData }) {
         placeholder="tvly-xxxxxxxxxxxxxxxxxxxxxxxx"
       />
 
+      <div className="settings-card">
+        <h3>AI data sharing</h3>
+        <p className="settings-desc">Ledger records stay on this device. When enabled, AI reports send totals and categories to Groq; chat sends your question and up to 100 recent transaction names, dates and amounts. Eligible chat searches send a sanitized question to Tavily. Exchange-rate requests use currency codes only.</p>
+        <label><input type="checkbox" checked={consent} onChange={e => { setAIConsent(e.target.checked); setConsent(e.target.checked) }} /> Allow financial data to be sent for AI features</label>
+        <p className="settings-desc">{usesSessionKeys() ? 'API keys last for this session only in this browser or on Android 5. Re-enter them after closing the app.' : 'API keys are encrypted on this device using Android Keystore.'}</p>
+      </div>
       <DataCard refreshData={refreshData} currency={currency} />
 
       <UpdateCard />
@@ -89,14 +98,14 @@ function Settings({ currency, currencies, onCurrencyChange, refreshData }) {
         <div className="about-info">
           <h3>About</h3>
           <p className="about-version">Finera <span>v{APP_VERSION}</span></p>
-          <p className="about-tagline">Track income and expenses with AI-powered insights and real-time rates. Data stays on your phone.</p>
+          <p className="about-tagline">Track income and expenses locally. AI and current exchange rates use internet services.</p>
           <div className="tech-stack">
             <span className="tech-pill">React</span>
             <span className="tech-pill">Capacitor</span>
             <span className="tech-pill">IndexedDB</span>
             <span className="tech-pill">Groq AI</span>
             <span className="tech-pill">Tavily</span>
-            <span className="tech-pill">100% Offline</span>
+            <span className="tech-pill">Offline ledger</span>
           </div>
         </div>
       </div>
@@ -135,7 +144,7 @@ function ApiKeyCard({ title, description, helpUrl, helpSteps, icon, iconClass, g
     setTestResult(null)
   }
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
     setError('')
     setTestResult(null)
@@ -144,7 +153,7 @@ function ApiKeyCard({ title, description, helpUrl, helpSteps, icon, iconClass, g
     if (cleaned.length < 10) { setError('API key looks too short'); return }
     setSaving(true)
     try {
-      setKey(cleaned)
+      await setKey(cleaned)
       setSaved(true)
       setVal('')
       setShowKey(false)
@@ -154,9 +163,10 @@ function ApiKeyCard({ title, description, helpUrl, helpSteps, icon, iconClass, g
     finally { setSaving(false) }
   }
 
-  const handleClear = () => {
+  const handleClear = async () => {
     if (!confirm('Remove the saved API key?')) return
-    setKey('')
+    try { await setKey('') }
+    catch (e) { setError(e.message || 'Could not remove key'); return }
     setVal('')
     setMasked('')
     setStatus('missing')
@@ -299,10 +309,13 @@ function ApiKeyCard({ title, description, helpUrl, helpSteps, icon, iconClass, g
 function DataCard({ refreshData, currency }) {
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState(null)
+  const [mode, setMode] = useState('merge')
+  const inputRef = useRef(null)
 
   const handleExportPDF = async () => {
     setBusy(true)
     try {
+      const { exportTransactionsPDF } = await import('../utils/pdfExport.js')
       const res = await exportTransactionsPDF(currency)
       setMsg({
         kind: 'ok',
@@ -314,12 +327,40 @@ function DataCard({ refreshData, currency }) {
     finally { setBusy(false); setTimeout(() => setMsg(null), 4000) }
   }
 
+  const handleExportJSON = async () => {
+    setBusy(true)
+    try {
+      const data = await db.exportJSON()
+      const name = `Finera-Backup-${new Date().toISOString().replace(/[:.]/g, '-')}.json`
+      const saved = await saveBlob(new Blob([data], { type: 'application/json' }), name)
+      setMsg({ kind: 'ok', text: saved === 'downloads' ? `${name} saved to Downloads` : 'JSON backup downloaded. Keep it somewhere safe; it contains your ledger.' })
+    } catch (e) { setMsg({ kind: 'err', text: e.message || 'Backup failed' }) }
+    finally { setBusy(false) }
+  }
+
+  const handleImport = async e => {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    if (file.size > 20 * 1024 * 1024) { setMsg({ kind: 'err', text: 'Backup exceeds the 20 MB limit' }); return }
+    if (mode === 'replace' && !window.confirm('Replace the entire ledger with this backup? Export your current JSON backup first.')) return
+    setBusy(true)
+    try {
+      const result = await db.importJSON(await file.text(), { mode })
+      await refreshData?.()
+      setMsg({ kind: 'ok', text: `Restored ${result.imported} transactions; skipped ${result.skipped} duplicates.` })
+    } catch (error) { setMsg({ kind: 'err', text: error.message || 'Restore failed. No changes saved.' }) }
+    finally { setBusy(false) }
+  }
+
   const handleClear = async () => {
     setBusy(true)
     try {
+      const count = await db.countTransactions()
+      if (!window.confirm(`Permanently delete all ${count} transactions? Export a JSON backup first. This cannot be undone.`)) return
       await db.clearAll()
       setMsg({ kind: 'ok', text: 'All transactions deleted' })
-      if (refreshData) refreshData()
+      await refreshData?.()
     } catch (e) { setMsg({ kind: 'err', text: e.message }) }
     finally { setBusy(false); setTimeout(() => setMsg(null), 3000) }
   }
@@ -335,9 +376,11 @@ function DataCard({ refreshData, currency }) {
         </h3>
       </div>
       <p className="settings-desc">
-        Export a PDF report with date, time, amount and category details.
+        JSON backups can restore your ledger on another device. PDF is a readable report. Backups contain financial data; keep them private.
       </p>
       <div className="button-group">
+        <motion.button type="button" className="update-btn update-btn--sm" onClick={handleExportJSON} disabled={busy}><DownloadIcon /> <span>Export JSON</span></motion.button>
+        <motion.button type="button" className="update-btn update-btn--sm" onClick={() => inputRef.current?.click()} disabled={busy}><span>Import JSON</span></motion.button>
         <motion.button type="button" className="update-btn update-btn--sm" onClick={handleExportPDF} disabled={busy} whileTap={{ scale: 0.95 }}>
           <DownloadIcon /> <span>Export PDF</span>
         </motion.button>
@@ -347,6 +390,8 @@ function DataCard({ refreshData, currency }) {
         </motion.button>
 
       </div>
+      <label className="settings-desc">Restore mode <select aria-label="Restore mode" value={mode} onChange={e => setMode(e.target.value)} disabled={busy}><option value="merge">Merge and skip duplicates</option><option value="replace">Replace entire ledger</option></select></label>
+      <input ref={inputRef} type="file" accept="application/json,.json" aria-label="Choose JSON backup" onChange={handleImport} hidden />
       <AnimatePresence>
         {msg && (
           <motion.div
@@ -385,8 +430,9 @@ function UpdateCard() {
     setInfo(result)
     setChecking(false)
     if (result.updateAvailable) setStatus('available')
-    else if (result.reason === 'error') {
+    else if (result.reason !== 'up-to-date') {
       if (prevInfo?.updateAvailable) {
+        setInfo(prevInfo)
         setMsg({ kind: 'err', text: 'Re-check failed, but an update is still available.' })
       } else {
         setStatus('error')
@@ -395,6 +441,11 @@ function UpdateCard() {
   }
 
   useEffect(() => { check() }, [])
+
+  const controllerRef = useRef(null)
+  const downloadIdRef = useRef(null)
+  const [checksum, setChecksum] = useState('')
+  useEffect(() => () => { controllerRef.current?.abort(); if (downloadIdRef.current != null) cancelDownload(downloadIdRef.current).catch(() => {}) }, [])
 
   const handleDownload = async () => {
     if (!info || !info.url || downloading) return
@@ -410,20 +461,27 @@ function UpdateCard() {
         a.click()
         document.body.removeChild(a)
         setDownloading(false)
-        setDownloaded(true)
-        setMsg({ kind: 'ok', text: 'Download started in your browser. Once it finishes in your Downloads folder, tap "Update now" to install it.' })
+        setMsg({ kind: 'ok', text: 'Download started in your browser. Open the APK in Downloads when it finishes. Android will verify the app signature before installing.' })
         return
       }
+      const hash = await getUpdateChecksum(info)
+      setChecksum(hash)
+      const controller = new AbortController()
+      controllerRef.current = controller
       const { downloadId, filePath: fp } = await downloadApk(info.url)
+      downloadIdRef.current = downloadId
       setFilePath(fp)
       await pollDownload(downloadId, (st) => {
         const pct = st.totalSize > 0 ? Math.round((st.bytesDownloaded / st.totalSize) * 100) : null
         setProgress(pct)
-      })
+      }, 2000, { signal: controller.signal })
+      downloadIdRef.current = null
       setDownloading(false)
       setDownloaded(true)
       setMsg({ kind: 'ok', text: 'Download complete. Tap "Update now" to install the new version.' })
     } catch (e) {
+      if (downloadIdRef.current != null) await cancelDownload(downloadIdRef.current).catch(() => {})
+      downloadIdRef.current = null
       setDownloading(false)
       setMsg({ kind: 'err', text: e.message || 'Download failed' })
     }
@@ -438,7 +496,7 @@ function UpdateCard() {
     setInstalling(true)
     setMsg(null)
     try {
-      await installApk(filePath)
+      await installApk(filePath, checksum)
       clearUpdateCache()
       setMsg({ kind: 'ok', text: 'Installer opened. Tap "Install" to finish the update. The app will restart automatically.' })
     } catch (e) {
@@ -483,7 +541,7 @@ function UpdateCard() {
             : status === 'uptodate'
               ? `You are on the latest version (v${info.currentVersion}). New releases are checked from GitHub automatically.`
               : status === 'error'
-                ? 'Could not reach GitHub right now. Check your internet connection and try again.'
+                ? (info?.error || `Update check could not confirm the latest APK (${info?.reason || 'network error'}). Please try again.`)
                 : 'Checking for updates...'}
       </p>
 
@@ -573,6 +631,7 @@ function UpdateCard() {
           <span className="update-progress-label">
             {progress != null ? `Downloading... ${progress}%` : 'Downloading...'}
           </span>
+          <button className="update-btn update-btn--ghost" onClick={() => controllerRef.current?.abort()}>Cancel download</button>
         </div>
       )}
 

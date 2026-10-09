@@ -1,4 +1,4 @@
-﻿"""Finera backend - FastAPI application.
+"""Finera backend - FastAPI application.
 
 Refactored: SQLAlchemy 2.0 ORM, Pydantic v2 schemas, service layer,
 structured logging, proper error handlers, async currency rates,
@@ -6,6 +6,8 @@ update check, CORS via env, version-compare for auto-updates.
 """
 from __future__ import annotations
 import json
+import hashlib
+import math
 import logging
 import os
 from contextlib import asynccontextmanager
@@ -15,6 +17,9 @@ from typing import List, Optional
 from fastapi import Depends, FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.exceptions import RequestValidationError
+from security import require_owner
+from finance import totals as financial_totals
 from pydantic import ValidationError
 from sqlalchemy import func, text
 from sqlalchemy.orm import Session
@@ -52,11 +57,11 @@ async def lifespan(app):
     log.info("Finera API v%s started", settings.app_version)
     yield
 
-app = FastAPI(title="Finera API", version=settings.app_version, lifespan=lifespan)
+app = FastAPI(title="Finera legacy API", version=settings.app_version, lifespan=lifespan, dependencies=[Depends(require_owner)])
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.cors_origins_list or ["*"],
+    allow_origins=settings.cors_origins_list,
     allow_credentials=bool(settings.cors_origins_list) and settings.cors_origins_list != ["*"],
     allow_methods=["*"],
     allow_headers=["*"],
@@ -64,8 +69,12 @@ app.add_middleware(
 
 
 @app.exception_handler(ValidationError)
-async def _pydantic_handler(_: Request, exc: ValidationError) -> JSONResponse:
-    return JSONResponse(status_code=422, content={"detail": exc.errors()})
+@app.exception_handler(RequestValidationError)
+async def _pydantic_handler(_: Request, exc) -> JSONResponse:
+    # Error inputs can include float infinity or ValueError objects.
+    # Do not echo submitted payloads (which may contain credentials).
+    errors = [{"loc": list(error["loc"]), "type": error["type"], "msg": error["msg"]} for error in exc.errors()]
+    return JSONResponse(status_code=422, content={"detail": errors})
 
 
 @app.exception_handler(ValueError)
@@ -106,6 +115,7 @@ def _set_kv(db: Session, key: str, value: str) -> None:
     else:
         db.add(SettingKV(key=key, value=value))
     db.commit()
+    ai_cache.clear()
 
 
 def _delete_kv(db: Session, key: str) -> None:
@@ -113,6 +123,7 @@ def _delete_kv(db: Session, key: str) -> None:
     if row:
         db.delete(row)
         db.commit()
+        ai_cache.clear()
 
 
 def get_api_key(db: Session | None = None) -> str:
@@ -195,14 +206,15 @@ def delete_apikey(provider: str = Query("groq"), db: Session = Depends(get_db)) 
 # ---------------------------------------------------------------------------
 @app.post("/transactions", response_model=TransactionResponse, status_code=201)
 def add_transaction(payload: TransactionCreate, db: Session = Depends(get_db)) -> TransactionResponse:
-    now = datetime.now()
-    date_str = now.strftime("%Y-%m-%d %H:%M:%S")
+    now = payload.date or datetime.now().astimezone()
+    date_str = now.isoformat()
     actual_amount = payload.amount if payload.type == "income" else -payload.amount
     tx = Transaction(
         name=payload.name,
         amount=actual_amount,
         category=payload.category,
         type=payload.type,
+        currency=payload.currency,
         date=date_str,
         month=now.month,
         year=now.year,
@@ -210,9 +222,10 @@ def add_transaction(payload: TransactionCreate, db: Session = Depends(get_db)) -
     db.add(tx)
     db.commit()
     db.refresh(tx)
+    ai_cache.clear()
     return TransactionResponse(
         id=tx.id, name=tx.name, amount=tx.amount, category=tx.category,
-        type=tx.type, date=tx.date, month=tx.month, year=tx.year,
+        type=tx.type, currency=tx.currency, date=tx.date, month=tx.month, year=tx.year,
     )
 
 
@@ -234,7 +247,7 @@ def get_transactions(
     return [
         TransactionResponse(
             id=r.id, name=r.name, amount=r.amount, category=r.category,
-            type=r.type, date=r.date, month=r.month, year=r.year,
+            type=r.type, currency=r.currency, date=r.date, month=r.month, year=r.year,
         )
         for r in rows
     ]
@@ -247,178 +260,95 @@ def delete_transaction(transaction_id: int, db: Session = Depends(get_db)) -> di
         raise HTTPException(status_code=404, detail="Transaction not found")
     db.delete(tx)
     db.commit()
+    ai_cache.clear()
     return {"success": True, "deleted": transaction_id}
 
 
 @app.get("/summary", response_model=MonthSummary)
-def get_summary(
+async def get_summary(
     month: Optional[int] = Query(None, ge=1, le=12),
     year: Optional[int] = Query(None, ge=1970, le=9999),
+    currency: str = Query("INR", pattern="^[A-Z]{3}$"),
     db: Session = Depends(get_db),
 ) -> MonthSummary:
     now = datetime.now()
-    m = month or now.month
-    y = year or now.year
-    rows = db.query(Transaction.amount, Transaction.type).filter(
-        Transaction.month == m, Transaction.year == y
-    ).all()
-    total_income = sum(r.amount for r in rows if r.amount > 0)
-    total_expense = sum(abs(r.amount) for r in rows if r.amount < 0)
-    balance = total_income - total_expense
-    savings_rate = (balance / total_income * 100) if total_income > 0 else 0.0
-    return MonthSummary(
-        total_income=total_income,
-        total_expense=total_expense,
-        balance=balance,
-        savings_rate=savings_rate,
-        transaction_count=len(rows),
-    )
+    rows = db.query(Transaction).filter(Transaction.month == (month or now.month), Transaction.year == (year or now.year)).all()
+    totals = await financial_totals(rows, currency, db)
+    income, expense = totals["income"], totals["expense"]
+    balance = income - expense
+    return MonthSummary(total_income=income, total_expense=expense, balance=balance, savings_rate=balance / income * 100 if income else 0, transaction_count=len(rows))
 
 
 @app.get("/categories", response_model=List[CategoryTotal])
-def get_categories(
+async def get_categories(
     month: Optional[int] = Query(None, ge=1, le=12),
     year: Optional[int] = Query(None, ge=1970, le=9999),
+    currency: str = Query("INR", pattern="^[A-Z]{3}$"),
     db: Session = Depends(get_db),
 ) -> List[CategoryTotal]:
     now = datetime.now()
-    m = month or now.month
-    y = year or now.year
-    rows = (
-        db.query(Transaction.category, func.sum(func.abs(Transaction.amount)).label("total"))
-        .filter(Transaction.month == m, Transaction.year == y, Transaction.amount < 0)
-        .group_by(Transaction.category)
-        .order_by(func.sum(func.abs(Transaction.amount)).desc())
-        .all()
-    )
-    return [CategoryTotal(category=r.category, total=r.total) for r in rows]
+    rows = db.query(Transaction).filter(Transaction.month == (month or now.month), Transaction.year == (year or now.year)).all()
+    data = await financial_totals(rows, currency, db)
+    return [CategoryTotal(category=category, total=amount) for category, amount in sorted(data["categories"].items(), key=lambda item: item[1], reverse=True)]
 
 
 # ---------------------------------------------------------------------------
 # AI
 # ---------------------------------------------------------------------------
+def ai_cache_key(kind, key, data):
+    key_id = hashlib.sha256(key.encode()).hexdigest()
+    fingerprint = hashlib.sha256(json.dumps(data, sort_keys=True).encode()).hexdigest()
+    return f"{kind}:{key_id}:{fingerprint}"
+
+
 @app.get("/ai/insights", response_model=AIInsightsResponse)
 async def get_ai_insights(
     month: Optional[int] = Query(None, ge=1, le=12),
     year: Optional[int] = Query(None, ge=1970, le=9999),
+    currency: str = Query("INR", pattern="^[A-Z]{3}$"),
+    force: bool = False,
     db: Session = Depends(get_db),
 ) -> AIInsightsResponse:
     import asyncio
-
     now = datetime.now()
-    m = month or now.month
-    y = year or now.year
-    api_key = get_api_key(db)
-
-    # Cache key includes month/year + key hash to avoid cross-user leakage
-    cache_key = f"insights:{m}:{y}:{hash(api_key) & 0xFFFF}"
-    cached = ai_cache.get(cache_key)
-    if cached:
-        return AIInsightsResponse(**cached)
-
-    ai = FinanceAI(api_key=api_key)
-
-    # Single query for current month - derive everything in one pass (was 2 queries before)
+    m, y = month or now.month, year or now.year
+    pm, py = (m - 1, y) if m > 1 else (12, y - 1)
     rows = db.query(Transaction).filter(Transaction.month == m, Transaction.year == y).all()
-    rows_dicts = [
-        {"id": r.id, "name": r.name, "amount": r.amount, "category": r.category,
-         "type": r.type, "date": r.date, "month": r.month, "year": r.year}
-        for r in rows
-    ]
-    categories: dict[str, float] = {}
-    total_income = 0.0
-    total_expense = 0.0
-    for r in rows:
-        if r.amount > 0:
-            total_income += r.amount
-        else:
-            amt = abs(r.amount)
-            total_expense += amt
-            categories[r.category] = categories.get(r.category, 0) + amt
-
-    previous_month = m - 1 if m > 1 else 12
-    previous_year = y if m > 1 else y - 1
-    prev_rows = db.query(Transaction).filter(
-        Transaction.month == previous_month, Transaction.year == previous_year
-    ).all()
-    prev_income = sum(r.amount for r in prev_rows if r.amount > 0)
-    prev_expense = sum(abs(r.amount) for r in prev_rows if r.amount < 0)
-
-    # Run blocking Groq call in threadpool to avoid blocking event loop
-    if api_key:
-        result = await asyncio.to_thread(
-            ai.get_financial_insights,
-            current_month_data={"income": total_income, "expense": total_expense, "categories": categories, "transactions": rows_dicts},
-            previous_month_data={"income": prev_income, "expense": prev_expense},
-            month=m, year=y,
-        )
-    else:
-        result = ai.get_financial_insights(
-            current_month_data={"income": total_income, "expense": total_expense, "categories": categories, "transactions": rows_dicts},
-            previous_month_data={"income": prev_income, "expense": prev_expense},
-            month=m, year=y,
-        )
-    top_category = max(categories.items(), key=lambda x: x[1])[0] if categories else "N/A"
-    result.setdefault("highlights", {
-        "income": total_income,
-        "expenses": total_expense,
-        "savings": total_income - total_expense,
-        "top_category": top_category,
-    })
-    result["ai_configured"] = bool(api_key)
-    result["model"] = ai.model if api_key else ""
-    # Cache for 1 hour (3600s)
-    ai_cache.set(cache_key, result, 3600)
+    previous = db.query(Transaction).filter(Transaction.month == pm, Transaction.year == py).all()
+    current = await financial_totals(rows, currency, db)
+    prev = await financial_totals(previous, currency, db)
+    key = get_api_key(db)
+    cache_key = ai_cache_key("insights", key, [m, y, current, prev])
+    cached = ai_cache.get(cache_key)
+    if cached and not force: return AIInsightsResponse(**cached)
+    ai = FinanceAI(api_key=key)
+    result = await asyncio.to_thread(ai.get_financial_insights, current, prev, m, y)
+    live = bool(key) and ai.last_call_live
+    result.update(ai_configured=live, model=ai.model if live else "", provider="groq" if live else "built-in")
+    if live: ai_cache.set(cache_key, result, 3600)
     return AIInsightsResponse(**result)
 
 
 @app.get("/ai/suggestions", response_model=AISuggestionsResponse)
-async def get_ai_suggestions(db: Session = Depends(get_db)) -> AISuggestionsResponse:
+async def get_ai_suggestions(currency: str = Query("INR", pattern="^[A-Z]{3}$"), force: bool = False, db: Session = Depends(get_db)) -> AISuggestionsResponse:
     import asyncio
     from sqlalchemy import and_, or_
-
     now = datetime.now()
-    api_key = get_api_key(db)
-    cache_key = f"suggestions:{now.month}:{now.year}:{hash(api_key) & 0xFFFF}"
+    keys = [((now.month - index - 1) % 12 + 1, now.year + (now.month - index - 1) // 12) for index in range(6)]
+    rows = db.query(Transaction).filter(or_(*[and_(Transaction.month == m, Transaction.year == y) for m, y in keys])).all()
+    data = []
+    for m, y in keys:
+        value = await financial_totals([row for row in rows if row.month == m and row.year == y], currency, db)
+        data.append({"month": m, "year": y, **value})
+    key = get_api_key(db)
+    cache_key = ai_cache_key("suggestions", key, data)
     cached = ai_cache.get(cache_key)
-    if cached:
-        return AISuggestionsResponse(**cached)
-
-    ai = FinanceAI(api_key=api_key)
-
-    # Build 6 month keys
-    month_keys: list[tuple[int, int]] = []
-    for i in range(6):
-        m = now.month - i
-        y = now.year
-        if m <= 0:
-            m += 12
-            y -= 1
-        month_keys.append((m, y))
-
-    # Single query for all 6 months (was 6 sequential queries before - N+1)
-    conditions = [and_(Transaction.month == m, Transaction.year == y) for m, y in month_keys]
-    all_rows = db.query(Transaction).filter(or_(*conditions)).all()
-
-    # Bucket in memory
-    bucket: dict[tuple[int, int], dict] = {k: {"month": k[0], "year": k[1], "income": 0.0, "expense": 0.0} for k in month_keys}
-    for r in all_rows:
-        k = (r.month, r.year)
-        if k in bucket:
-            if r.amount > 0:
-                bucket[k]["income"] += r.amount
-            else:
-                bucket[k]["expense"] += abs(r.amount)
-
-    monthly_data = [bucket[k] for k in month_keys]
-
-    if api_key:
-        result = await asyncio.to_thread(ai.get_savings_suggestions, monthly_data)
-    else:
-        result = ai.get_savings_suggestions(monthly_data)
-    result["ai_configured"] = bool(api_key)
-    result["model"] = ai.model if api_key else ""
-    ai_cache.set(cache_key, result, 3600)
+    if cached and not force: return AISuggestionsResponse(**cached)
+    ai = FinanceAI(api_key=key)
+    result = await asyncio.to_thread(ai.get_savings_suggestions, data)
+    live = bool(key) and ai.last_call_live
+    result.update(ai_configured=live, model=ai.model if live else "", provider="groq" if live else "built-in")
+    if live: ai_cache.set(cache_key, result, 3600)
     return AISuggestionsResponse(**result)
 
 
@@ -436,7 +366,7 @@ async def currency_rates(
 
 @app.get("/currency/convert", response_model=CurrencyConvertResponse)
 async def currency_convert(
-    amount: float = Query(..., gt=0),
+    amount: float = Query(..., gt=0, le=1e12, allow_inf_nan=False),
     from_currency: str = Query(..., alias="from", min_length=3, max_length=3),
     to_currency: str = Query(..., alias="to", min_length=3, max_length=3),
     db: Session = Depends(get_db),

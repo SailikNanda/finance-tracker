@@ -5,12 +5,13 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
   const apiTarget = env.VITE_API_TARGET || 'http://localhost:8000'
   const apiPrefix = env.VITE_API_PREFIX || '/api'
-  const hostRaw = env.VITE_HOST !== undefined ? env.VITE_HOST : true
+  const hostRaw = env.VITE_HOST !== undefined ? env.VITE_HOST : '127.0.0.1'
   const host = hostRaw === true || hostRaw === 'true' ? true
               : hostRaw === false || hostRaw === 'false' ? false
               : hostRaw
   return {
     plugins: [react()],
+    worker: { format: 'es' },
     server: {
       host,
       port: 3000,
@@ -25,19 +26,11 @@ export default defineConfig(({ mode }) => {
     },
     build: {
       outDir: 'dist',
+      emptyOutDir: true,
       sourcemap: false,
       chunkSizeWarningLimit: 1024,
       target: 'es2018',
-      rollupOptions: {
-        output: {
-          manualChunks(id) {
-            if (id.includes('node_modules/framer-motion') || id.includes('node_modules/motion')) return 'motion'
-            if (id.includes('node_modules/react')) return 'react'
-            if (id.includes('node_modules/@capacitor')) return 'capacitor'
-            if (id.includes('node_modules')) return 'vendor'
-          },
-        },
-      },
+      // PDF lives in an on-demand worker; Rollup chooses shared chunks.
     },
   }
 })

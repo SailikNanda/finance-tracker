@@ -15,7 +15,8 @@ class Settings(BaseSettings):
     )
 
     # Server
-    host: str = "0.0.0.0"
+    host: str = "127.0.0.1"
+    api_auth_token: str = ""
     port: int = 8000
     reload: bool = False
     log_level: str = "INFO"
@@ -32,7 +33,7 @@ class Settings(BaseSettings):
     currency_request_timeout: float = 10.0
 
     # Updates
-    app_version: str = "1.3.0"
+    app_version: str = "2.2.8"
     apk_download_url: str = ""
     update_notes: str = ""
     update_force_below: str = "1.0.0"

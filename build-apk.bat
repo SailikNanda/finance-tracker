@@ -35,8 +35,8 @@ REM --- Step 2: install JS deps if missing ---
 if not exist "frontend\node_modules" (
   echo [1/5] Installing JS dependencies...
   pushd frontend
-  call npm install
-  if errorlevel 1 ( popd & echo [ERROR] npm install failed. & pause & exit /b 1 )
+  call npm ci
+  if errorlevel 1 ( popd & echo [ERROR] npm ci failed. & pause & exit /b 1 )
   popd
 ) else (
   echo [1/5] JS deps already installed.

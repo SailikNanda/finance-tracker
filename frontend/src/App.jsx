@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useCallback, useMemo, Suspense, lazy } from 'react'
+import React, { useState, useEffect, useCallback, useRef, Suspense, lazy } from 'react'
 import { motion } from 'framer-motion'
 import { HapticProvider } from './components/HapticFeedback'
 import { DashboardIcon, PlusIcon, ListIcon, AIIcon, SettingsIcon, BanknoteIcon } from './components/Icons'
@@ -43,15 +43,19 @@ const TABS = [
   { id: 'settings', label: 'More', Icon: SettingsIcon },
 ]
 
-function App() {
+function App({ startupWarning = '' }) {
   const [activeTab, setActiveTab] = useState('dashboard')
   const [data, setData] = useState({ transactions: [], summary: null, categories: [] })
   const [currentMonth, setCurrentMonth] = useState(new Date().getMonth() + 1)
   const [currentYear, setCurrentYear] = useState(new Date().getFullYear())
   const [loading, setLoading] = useState(false)
   const [editingTx, setEditingTx] = useState(null)
+  const [error, setError] = useState('')
+  const [ledgerRevision, setLedgerRevision] = useState(db.getRevision())
+  const [credentialRevision, setCredentialRevision] = useState(0)
+  const requestRef = useRef(0)
   const [currency, setCurrencyState] = useState(() => {
-    try { return localStorage.getItem(CURRENCY_STORAGE_KEY) || 'INR' } catch { return 'INR' }
+    try { const value = localStorage.getItem(CURRENCY_STORAGE_KEY); return CURRENCIES.some(c => c.code === value) ? value : 'INR' } catch { return 'INR' }
   })
 
   const getCurrencySymbol = useCallback(() => {
@@ -60,23 +64,39 @@ function App() {
   }, [currency])
 
   const updateCurrency = useCallback((code) => {
+    if (!CURRENCIES.some(c => c.code === code)) return
+    requestRef.current++
+    setData({ transactions: [], summary: null, categories: [] })
     setCurrencyState(code)
     try { localStorage.setItem(CURRENCY_STORAGE_KEY, code) } catch {}
   }, [])
 
   const fetchData = useCallback(async () => {
+    const requestId = ++requestRef.current
     setLoading(true)
+    setError('')
     try {
-      const { transactions: t, summary: s, categories: c } = await db.getMonthOverview(currentMonth, currentYear, currency)
-      setData({ transactions: t, summary: s, categories: c })
+      const { transactions: t, summary: s, categories: c, rateData } = await db.getMonthOverview(currentMonth, currentYear, currency)
+      if (requestId !== requestRef.current) return
+      setData({ transactions: t, summary: { ...s, rate_stale: !!rateData.stale, rate_updated_at: rateData.updated_at }, categories: c })
     } catch (err) {
-      console.error('Failed to load data:', err)
+      if (requestId === requestRef.current) setError(err.message || 'Failed to load transactions')
     } finally {
-      setLoading(false)
+      if (requestId === requestRef.current) setLoading(false)
     }
   }, [currentMonth, currentYear, currency])
 
-  useEffect(() => { fetchData() }, [fetchData])
+  useEffect(() => { fetchData(); return () => { requestRef.current++ } }, [fetchData])
+  useEffect(() => {
+    const ledgerChanged = () => setLedgerRevision(db.getRevision())
+    const credentialsChanged = () => setCredentialRevision(value => value + 1)
+    window.addEventListener('finera-ledger-change', ledgerChanged)
+    window.addEventListener('finera-credentials-change', credentialsChanged)
+    return () => {
+      window.removeEventListener('finera-ledger-change', ledgerChanged)
+      window.removeEventListener('finera-credentials-change', credentialsChanged)
+    }
+  }, [])
 
   const startEdit = useCallback((tx) => {
     setEditingTx(tx)
@@ -119,6 +139,9 @@ function App() {
   return (
     <HapticProvider>
       <AppContent
+        error={error || startupWarning}
+        ledgerRevision={ledgerRevision}
+        credentialRevision={credentialRevision}
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         symbol={symbol}
@@ -135,7 +158,7 @@ function App() {
         editingTx={editingTx}
         currentMonth={currentMonth}
         currentYear={currentYear}
-        setCurrentMonth={setCurrentMonth}
+        setCurrentMonth={month => { requestRef.current++; setData({ transactions: [], summary: null, categories: [] }); setCurrentMonth(month) }}
         setCurrentYear={setCurrentYear}
         refreshData={fetchData}
       />
@@ -187,6 +210,7 @@ function TabFallback() {
 }
 
 function AppContent({
+  error, ledgerRevision, credentialRevision,
   activeTab, setActiveTab, symbol, summary, categories,
   loading, currency, updateCurrency, transactions, addTransaction,
   deleteTransaction, startEdit, cancelEdit, editingTx,
@@ -230,6 +254,7 @@ function AppContent({
           />
         </Suspense>
       </header>
+      {error && <p className="error-message" role="alert">{error}</p>}
 
       <div className="main-content-wrapper" style={{ display: 'flex', flexDirection: 'column', flex: 1, width: '100%', position: 'relative', overflow: 'hidden' }}>
         <TabPanel isActive={activeTab === 'dashboard'}>
@@ -272,7 +297,7 @@ function AppContent({
         </TabPanel>
         <TabPanel isActive={activeTab === 'ai'}>
           <Suspense fallback={<TabFallback />}>
-            <AIInsights month={currentMonth} year={currentYear} symbol={symbol} />
+            <AIInsights month={currentMonth} year={currentYear} symbol={symbol} currency={currency} ledgerRevision={ledgerRevision} credentialRevision={credentialRevision} isActive={activeTab === 'ai'} />
           </Suspense>
         </TabPanel>
         <TabPanel isActive={activeTab === 'converter'}>

@@ -1,10 +1,11 @@
-﻿import os
+import os
 from groq import Groq
 
 class FinanceAI:
     def __init__(self, api_key: str = ""):
         if not api_key:
             api_key = os.getenv("GROQ_API_KEY", "")
+        self.last_call_live = False
         self._api_key = api_key
         self._client = None
         self.model = "qwen/qwen3.8-27b"
@@ -30,7 +31,10 @@ class FinanceAI:
                 temperature=0.7,
                 max_tokens=1024,
             )
-            return chat_completion.choices[0].message.content
+            content = chat_completion.choices[0].message.content
+            if not content: raise ValueError("Empty AI response")
+            self.last_call_live = True
+            return content
         except Exception:
             return self._fallback_response(prompt)
     
@@ -62,22 +66,23 @@ Tip: add a free Groq API key in Settings to unlock live AI analysis."""
         month_names = ["", "January", "February", "March", "April", "May", "June",
                       "July", "August", "September", "October", "November", "December"]
         
+        unit = current_month_data.get("currency", "INR")
         categories_text = "\n".join(
-            f"ΓÇó {cat}: ${total:.2f}" for cat, total in current_month_data["categories"].items()
+            f"- {cat}: {unit} {total:.2f}" for cat, total in current_month_data["categories"].items()
         ) if current_month_data["categories"] else "No expenses recorded yet"
         
         prompt = f"""Analyze this financial data and provide insights for {month_names[month]} {year}:
 
 Current Month:
-- Total Income: ${current_month_data['income']:.2f}
-- Total Expenses: ${current_month_data['expense']:.2f}
-- Balance: ${current_month_data['income'] - current_month_data['expense']:.2f}
+- Total Income: {unit} {current_month_data['income']:.2f}
+- Total Expenses: {unit} {current_month_data['expense']:.2f}
+- Balance: {unit} {current_month_data['income'] - current_month_data['expense']:.2f}
 - Expense Categories:
 {categories_text}
 
 Previous Month:
-- Total Income: ${previous_month_data['income']:.2f}
-- Total Expenses: ${previous_month_data['expense']:.2f}
+- Total Income: {unit} {previous_month_data['income']:.2f}
+- Total Expenses: {unit} {previous_month_data['expense']:.2f}
 
 Provide:
 1. A brief analysis of spending patterns
@@ -103,8 +108,9 @@ Keep response concise and actionable. Use emojis for visual appeal."""
         }
     
     def get_savings_suggestions(self, monthly_data: list) -> dict:
+        unit = monthly_data[0].get("currency", "INR") if monthly_data else "INR"
         data_text = "\n".join(
-            f"ΓÇó Month {d['month']}/{d['year']}: Income ${d['income']:.2f}, Expenses ${d['expense']:.2f}, Saved ${d['income'] - d['expense']:.2f}"
+            f"ΓÇó Month {d['month']}/{d['year']}: Income {unit} {d['income']:.2f}, Expenses {unit} {d['expense']:.2f}, Saved {unit} {d['income'] - d['expense']:.2f}"
             for d in monthly_data
         )
         

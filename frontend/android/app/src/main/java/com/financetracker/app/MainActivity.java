@@ -8,6 +8,7 @@ public class MainActivity extends BridgeActivity {
     @Override
     public void onCreate(Bundle savedInstanceState) {
         registerPlugin(ApkUpdaterPlugin.class);
+        registerPlugin(CredentialVaultPlugin.class);
         super.onCreate(savedInstanceState);
     }
 }

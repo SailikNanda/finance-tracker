@@ -1,4 +1,4 @@
-﻿import React, { useState, useDeferredValue, useMemo, useCallback, memo } from 'react'
+import React, { useState, useEffect, useDeferredValue, useMemo, useCallback, memo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ArrowUpIcon, ArrowDownIcon, TrashIcon, PencilIcon } from './Icons'
 
@@ -16,6 +16,9 @@ function TransactionList({ transactions, loading, symbol, currencies, onDelete, 
   const [pendingId, setPendingId] = useState(null)
   const [filter, setFilter] = useState('all')
   const [search, setSearch] = useState('')
+  const [page, setPage] = useState(1)
+  const [error, setError] = useState('')
+  const pageSize = 50
   const deferredSearch = useDeferredValue(search)
 
   const symbolMap = useMemo(() => {
@@ -25,6 +28,13 @@ function TransactionList({ transactions, loading, symbol, currencies, onDelete, 
   }, [currencies])
 
   const getSymbolFor = useCallback((code) => symbolMap[code] || code || '', [symbolMap])
+
+  const visible = useMemo(() => (transactions || [])
+    .filter(t => filter === 'all' || t.type === filter)
+    .filter(t => !deferredSearch.trim() || String(t.name).toLowerCase().includes(deferredSearch.trim().toLowerCase()) || String(t.category).toLowerCase().includes(deferredSearch.trim().toLowerCase())), [transactions, filter, deferredSearch])
+  useEffect(() => { setPage(1) }, [filter, deferredSearch, transactions])
+  const pages = Math.max(1, Math.ceil(visible.length / pageSize))
+  const currentPage = Math.min(page, pages)
 
   if (loading) {
     return (
@@ -37,14 +47,14 @@ function TransactionList({ transactions, loading, symbol, currencies, onDelete, 
 
   const handleDelete = async (id) => {
     if (!onDelete) return
+    if (!window.confirm('Delete this transaction? This cannot be undone.')) return
     setPendingId(id)
-    await onDelete(id)
-    setPendingId(null)
+    setError('')
+    try {
+      if (!await onDelete(id)) setError('Delete failed. Please retry.')
+    } catch (e) { setError(e.message || 'Delete failed') }
+    finally { setPendingId(null) }
   }
-
-  const visible = useMemo(() => (transactions || [])
-    .filter(t => filter === 'all' || t.type === filter)
-    .filter(t => !deferredSearch.trim() || t.name.toLowerCase().includes(deferredSearch.trim().toLowerCase()) || t.category.toLowerCase().includes(deferredSearch.trim().toLowerCase())), [transactions, filter, deferredSearch])
 
   if (!transactions || transactions.length === 0) {
     return (
@@ -84,6 +94,7 @@ function TransactionList({ transactions, loading, symbol, currencies, onDelete, 
         <h2>Transaction History</h2>
         <span className="list-count">{visible.length} item{visible.length === 1 ? '' : 's'}</span>
       </div>
+      {error && <p className="error-message" role="alert">{error}</p>}
 
       <div className="list-toolbar">
         <div className="filter-pills" role="tablist">
@@ -131,7 +142,7 @@ function TransactionList({ transactions, loading, symbol, currencies, onDelete, 
           </motion.div>
         ) : (
           <div key="list" className="list-body">
-            {visible.map((tx) => (
+            {visible.slice((currentPage - 1) * pageSize, currentPage * pageSize).map((tx) => (
               <div
                 key={tx.id}
                 className={`transaction-row ${tx.type}`}
@@ -178,6 +189,13 @@ function TransactionList({ transactions, loading, symbol, currencies, onDelete, 
           </div>
         )}
       </AnimatePresence>
+      {pages > 1 && (
+        <nav className="button-group" aria-label="History pages">
+          <button className="update-btn update-btn--sm" disabled={currentPage === 1} onClick={() => setPage(currentPage - 1)}>Previous</button>
+          <span aria-live="polite">Page {currentPage} of {pages}</span>
+          <button className="update-btn update-btn--sm" disabled={currentPage === pages} onClick={() => setPage(currentPage + 1)}>Next</button>
+        </nav>
+      )}
     </motion.div>
   )
 }
