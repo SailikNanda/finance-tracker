@@ -2,7 +2,7 @@
 
 # Finera v2.8.8 — Pure APK, Zero Backend
 
-It works even when your laptop is powered off. Data is stored locally on the phone. No backend or internet connection is required.
+It works even when your laptop is powered off. Data is stored locally on the phone. No backend or internet connection is needed.
 
 <p align="center">
   <img src="https://img.shields.io/badge/Backend-Zero-5B86E5?style=for-the-badge" alt="Zero Backend" />
