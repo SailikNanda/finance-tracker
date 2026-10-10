@@ -2,7 +2,7 @@
 
 # Finera v2.2.8 — Pure APK, Zero Backend
 
-It works even when your laptop is powered off. Data is stored locally on the phone. The ledger works offline without a backend. AI features, current exchange rates and update checks use internet services.
+It works even when your laptop is powered off. Data is stored locally on the phone. The ledger works offline without a backend. AI features, current exchange rates, and update checks use internet services.
 
 This source includes audit fixes that are not yet in the published APK. See [the fix report](docs/AUDIT_FIXES.md) for changes and verification limits. Ship them as a newer signed release using the original installation key.
 
