@@ -91,7 +91,7 @@ Two scripts handle everything — no manual version editing required.
 Double-click (or run `push-updates.bat "commit message"` from a terminal). It commits every change and pushes to **GitHub**. No version bump, no release.
 
 ### release-apk.bat — full release (recommended)
-Double-click, type a new version such as `2.2.9`, press Enter. The script does everything automatically:
+Double-click, type a new version such as `2.2.9`, press Enter. The script handles everything automatically:
 
 1. Fetches and fast-forwards `main` before building; stops on dirty/diverged work.
 2. Updates `package.json`, lockfile and Android version name/code consistently.
