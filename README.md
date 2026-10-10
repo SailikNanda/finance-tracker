@@ -204,6 +204,6 @@ python -m pytest backend/tests -q
 python -m pip_audit -r backend/requirements.txt
 ```
 
-GitHub Actions runs finance regression, browser, dependency and Android compilation checks. Optional legacy backend routes require an owner bearer token (`API_AUTH_TOKEN`, at least 32 characters), bind to loopback by default and remain disabled without a configured token. It is a single-owner service, not a multi-user finance API.
+GitHub Actions runs finance regression, browser, dependency, and Android compilation checks. Optional legacy backend routes require an owner bearer token (`API_AUTH_TOKEN`, at least 32 characters), bind to loopback by default and remain disabled without a configured token. It is a single-owner service, not a multi-user finance API.
 
 The npm postinstall adapter updates Capacitor 5's tar default import for maintained tar 7. It fails if that upstream import changes, so incompatible installs cannot silently ship an unreviewed patch. Node.js 22.12+ is required for Vite 7.
