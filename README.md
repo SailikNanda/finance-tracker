@@ -20,7 +20,7 @@ This source includes audit fixes not yet in the published APK. See [the fix repo
 
 - **In-app updates (GitHub)** — checks GitHub releases, verifies SHA-256 and the installed app signing key, then opens the Android installer. Compatible in-place updates preserve the ledger.
 - **Edit transactions** — pencil icon in History; date can be changed (backdating supported)
-- **Faster AI** — Groq **Qwen 3.8 27B**
+- **Quicker AI** — Groq **Qwen 3.8 27B**
 - **Restorable JSON backup** — atomic validation, stable identifiers, duplicate skipping and original dates/currencies
 - **PDF export** — spreadsheet-style report with date/time/amount columns
 - **Optimized** — code splitting, faster loads, and a compound IndexedDB index
