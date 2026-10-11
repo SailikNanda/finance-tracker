@@ -115,7 +115,7 @@ Requirements (one-time): `gh` CLI (https://cli.github.com) with `gh auth login`.
 - Currency rate cache -> localStorage
 - Default currency choice -> localStorage
 
-The ledger is stored locally. **AI data sharing is off by default.** Opting in allows reports to send totals/categories to Groq and chat to send your question plus up to 100 recent transaction names/dates/amounts. Eligible chat searches send a sanitized question to Tavily. The bounded chat context does not search older records. Rate requests send currency codes. Exports contain private financial data and exclude API keys.
+The ledger is stored locally on your device. **AI data sharing is off by default.** Opting in allows reports to send totals/categories to Groq and chat to send your question plus up to 100 recent transaction names/dates/amounts. Eligible chat searches send a sanitized question to Tavily. The bounded chat context does not search older records. Rate requests send currency codes. Exports contain private financial data and exclude API keys.
 
 A phone reset or factory restore will erase your data. To back up:
 - Go to Settings → Data backup → Export PDF (report) or Export JSON (backup)
