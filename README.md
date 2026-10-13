@@ -12,6 +12,7 @@ This source includes audit fixes that are not yet in the published APK. See [the
   <img src="https://img.shields.io/badge/Version-2.2.8-F09819?style=for-the-badge" alt="Version 2.2.8" />
   <img src="https://img.shields.io/badge/Platform-Android-3DDC84?style=for-the-badge&logo=android&logoColor=white" alt="Android" />
   <img src="https://img.shields.io/badge/License-MIT-3DDC84?style=for-the-badge&logo=opensourceinitiative&logoColor=white" alt="MIT License" />
+  <img src="https://img.shields.io/badge/AI-Groq%20Qwen-F09819?style=for-the-badge" alt="AI powered by Groq Qwen" />
 </p>
 
 ---
