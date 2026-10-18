@@ -6,7 +6,7 @@
 
 It works even when your laptop is switched off. Data is stored locally on the phone. The ledger works offline without a backend. AI features, current exchange rates, and update checks use internet services.
 
-This source contains **audit fixes** not yet in the published APK. See [the fix report](docs/AUDIT_FIXES.md) for the changes and verification limits. Ship them as a newer signed release with the original installation key.
+This source includes **audit fixes** not yet in the published APK. See [the fix report](docs/AUDIT_FIXES.md) for the changes and verification limits. Ship them as a newer signed release with the original installation key.
 
 <p align="center">
   <img src="https://img.shields.io/badge/Backend-Zero-5B86E5?style=for-the-badge" alt="Zero Backend" />
