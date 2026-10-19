@@ -71,7 +71,7 @@ This script performs 4 tasks:
 APK output: `frontend\android\app\build\outputs\apk\debug\app-debug.apk`
 
 ### 4. Install on your phone
-Copy the APK file to your phone (USB, Google Drive, and email). Open it with a file manager and install. You may need to enable "Unknown Sources" or allow installing apps from the file manager.
+Copy the APK file to your phone (USB, Google Drive and email). Open it with a file manager and install. You may need to enable "Unknown Sources" or allow installing apps from the file manager.
 
 ### 5. Open the app
 Find the "Finera" app on your phone. The Home tab opens first. Use More to add provider keys and opt in to AI data sharing.
