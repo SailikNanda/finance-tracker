@@ -9,7 +9,7 @@ It works even when your laptop is turned off. Data is stored **locally** on the 
 This source includes **audit fixes** not yet in the published APK. See [the fix report](docs/AUDIT_FIXES.md) for the changes and verification limits. Ship them as a newer signed release with the original installation key.
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Backend-Zero-5B86E5?style=for-the-badge" alt="Zero Backend" />
+  <img src="https://img.shields.io/badge/Backend-Zero-5B86E5?style=for-the-badge" alt="Zero Backend" loading="lazy" decoding="async" />
   <img src="https://img.shields.io/badge/Offline-Capable-36D1DC?style=for-the-badge" alt="Offline Capable" />
   <img src="https://img.shields.io/badge/Version-2.2.8-F09819?style=for-the-badge" alt="Version 2.2.8" />
   <img src="https://img.shields.io/badge/Platform-Android-3DDC84?style=for-the-badge&logo=android&logoColor=white" alt="Android" />
