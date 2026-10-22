@@ -117,7 +117,7 @@ Requirements (one-time): `gh` CLI (https://cli.github.com) with `gh auth login`.
 - Transactions → IndexedDB (Chrome WebView internal storage on the phone)
 - Android 6+ API keys → AES-GCM ciphertext in app preferences, protected by a non-exportable Android Keystore key
 - Browser / Android 5 keys → memory only for the current session
-- Currency rate cache -> localStorage
+- Currency rate cache → localStorage
 - Default currency choice -> localStorage
 
 The ledger is stored locally on your device. **AI data sharing is off by default.** Opting in enables reports to send totals/categories to Groq and chat to send your question plus up to 100 recent transaction names/dates/amounts. Eligible chat searches send a sanitized question to Tavily. The bounded chat context does not search older records. Rate requests send currency codes. Exports contain private financial data and exclude API keys.
