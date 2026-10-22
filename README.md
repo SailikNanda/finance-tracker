@@ -13,7 +13,7 @@ This source includes **audit fixes** not yet in the published APK. See [the fix 
   <img src="https://img.shields.io/badge/Offline-Capable-36D1DC?style=for-the-badge" alt="Offline Capable" loading="lazy" decoding="async" />
   <img src="https://img.shields.io/badge/Version-2.2.8-F09819?style=for-the-badge" alt="Version 2.2.8" />
   <img src="https://img.shields.io/badge/Platform-Android-3DDC84?style=for-the-badge&logo=android&logoColor=white" alt="Android" loading="lazy" decoding="async" />
-  <img src="https://img.shields.io/badge/License-MIT-3DDC84?style=for-the-badge&logo=opensourceinitiative&logoColor=white" alt="MIT License" />
+  <img src="https://img.shields.io/badge/License-MIT-3DDC84?style=for-the-badge&logo=opensourceinitiative&logoColor=white" alt="MIT License" loading="lazy" decoding="async" />
   <img src="https://img.shields.io/badge/AI-Groq%20Qwen-F09819?style=for-the-badge" alt="AI powered by Groq Qwen" />
   <img src="https://img.shields.io/badge/React-18-61DAFB?style=for-the-badge&logo=react&logoColor=white" alt="React 18" />
   <img src="https://img.shields.io/badge/Node.js-22.12%2B-339933?style=for-the-badge&logo=nodedotjs&logoColor=white" alt="Node.js 22.12+" />
