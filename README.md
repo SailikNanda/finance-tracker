@@ -106,7 +106,7 @@ Double-click, type a new version such as `2.2.9`, press Enter. The script handle
 
 Set `FINERA_KEYSTORE`, `FINERA_STORE_PASSWORD`, `FINERA_KEY_ALIAS`, and `FINERA_KEY_PASSWORD` in your local environment first. **Use the signing key of the currently installed APK.** Existing debug-signed installations need the original developer machine's debug keystore for a compatible first upgrade. Keep that key backed up outside the repository. A different signing key cannot update existing installations in place.
 
-Users see **Update available** after the signed release is published. Export a JSON backup before upgrading. Do not uninstall an existing app to resolve a signing mismatch; contact the developer.
+Users see **Update available** after the signed release is published. Export a JSON backup before you upgrade. Do not uninstall an existing app to resolve a signing mismatch; contact the developer.
 
 Requirements (one-time): `gh` CLI (https://cli.github.com) with `gh auth login`. Repo: `SailikNanda/finance-tracker`.
 
