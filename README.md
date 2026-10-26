@@ -164,7 +164,7 @@ Android 6+ keys are encrypted at rest; existing plaintext keys migrate only afte
 | File | Contents |
 |---|---|
 | **README.md** (this file) | Overview, quick start |
-| **[INSTALL.md](INSTALL.md)** | Detailed setup (in English) |
+| **[INSTALL.md](INSTALL.md)** | Detailed setup guide (in English) |
 
 The `backend/` folder is kept for reference.
 
