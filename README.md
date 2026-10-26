@@ -49,7 +49,7 @@ This source includes **audit fixes** not yet in the published APK. See [the fix 
 ## Quick Start (5 minutes)
 
 ### 1. Install Node.js 22.12+ and Java JDK 17 (one-time)
-Install Node.js from https://nodejs.org and Java from https://adoptium.net. Use the default settings, then restart your computer.
+Install Node.js from https://nodejs.org and Java from https://adoptium.net. Use the default settings and then restart your computer.
 
 ### 2. Install Android SDK (one-time)
 Download the command-line tools from https://developer.android.com/studio#command-line-tools-only
