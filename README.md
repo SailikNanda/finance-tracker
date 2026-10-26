@@ -131,7 +131,7 @@ A phone reset or a factory restore erases your data. To back up:
 
 ## API Keys (Groq + Tavily): How to Add Them
 
-Open the app, then go to the More tab (Settings):
+Open the app and go to the More tab (Settings):
 1. Paste your Groq API key (starts with `gsk_...`) into the "Groq API key" field
    - Get a key at: https://console.groq.com (free, no card required)
 2. Paste your Tavily API key (starts with `tvly-...`) into the "Tavily API key" field
