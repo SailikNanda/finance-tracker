@@ -63,7 +63,7 @@ In PowerShell (once):
 ### 3. Build the APK (one-time, ~5 minutes)
 Go to the `S:\Finance Tracker\finance-tracker\` folder and double-click `build-apk.bat`.
 
-This script performs 4 tasks:
+This script performs four tasks:
 1. npm ci
 2. vite build
 3. npx cap sync android
