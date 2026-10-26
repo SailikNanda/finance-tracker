@@ -147,7 +147,7 @@ Android 6+ keys are encrypted at rest; existing plaintext keys migrate only afte
 - **15+ currencies** with the latest daily rates (ExchangeRate-API / optional Tavily)
 - **AI insights** (Groq Qwen 3.8 27B)
 - 6-month savings tips
-- Pie and bar charts for categories
+- Pie and bar charts by category
 - Monthly summary
 - PDF report export (timestamped filename, spreadsheet-style table)
 - Edit + delete transactions with confirmation
