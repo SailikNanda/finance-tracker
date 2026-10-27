@@ -28,7 +28,7 @@ This source includes **audit fixes** not yet in the published APK. See [the fix 
 - **Faster AI** — Groq **Qwen 3.8 27B**
 - **Restorable JSON backup** — atomic validation, stable identifiers, duplicate skipping, and the original dates and currencies
 - **PDF export** — spreadsheet-style report with date/time/amount columns
-- **Optimized** — code splitting, faster loads and a compound IndexedDB index
+- **Optimized** — code splitting, faster loads, and a compound IndexedDB index
 
 ---
 
@@ -151,7 +151,7 @@ Android 6+ keys are encrypted at rest; existing plaintext keys migrate only afte
 - Monthly summary
 - PDF report export (timestamped filename, spreadsheet-style table)
 - Edit + delete transactions with confirmation
-- Dark glass-morphism UI with iOS-style spring animations
+- A dark glass-morphism UI with iOS-style spring animations
 - Haptic feedback
 - Offline ledger; mixed-currency totals need valid live or explicitly marked cached rates
 - No required backend; external AI/rate providers as described above
