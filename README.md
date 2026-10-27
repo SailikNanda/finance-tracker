@@ -153,7 +153,7 @@ Android 6+ keys are encrypted at rest; existing plaintext keys migrate only afte
 - Edit + delete transactions with confirmation
 - A dark glass-morphism UI with iOS-style spring animations
 - Haptic feedback
-- Offline ledger; mixed-currency totals need valid live or explicitly marked cached rates
+- Offline ledger; mixed-currency totals require valid live or explicitly marked cached rates
 - No required backend; external AI/rate providers as described above
 - Data backup/restore (JSON)
 
