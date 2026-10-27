@@ -79,7 +79,7 @@ Find the "Finera" app on your phone; the Home tab opens first. Use More to add p
 
 ---
 
-## How It Works (Architecture)
+## How It Works (architecture)
 
 The **React app** runs inside the **Capacitor WebView**. Ledger entries are stored in IndexedDB; Android provider keys are encrypted using Keystore. AI reports and consented chat call Groq directly. Rates use ExchangeRate-API with an optional Tavily fallback. GitHub releases provide APK update metadata. PDF code runs in an on-demand worker.
 
@@ -154,7 +154,7 @@ Android 6+ keys are encrypted at rest; existing plaintext keys migrate only afte
 - A dark glass-morphism UI with iOS-style spring animations
 - Haptic feedback
 - Offline ledger; mixed-currency totals need valid live or explicitly marked cached rates
-- No required backend; external AI/rate providers as described above
+- No required backend; external AI and rate providers as described above
 - Data backup/restore (JSON)
 
 ---
