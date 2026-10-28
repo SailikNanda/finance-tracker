@@ -28,7 +28,7 @@ This source contains **audit fixes** not yet in the published APK. See [the fix 
 - **Faster AI** — Groq **Qwen 3.8 27B**
 - **Restorable JSON backup** — atomic validation, stable identifiers, duplicate skipping, and the original dates and currencies
 - **PDF export** — spreadsheet-style report with date/time/amount columns
-- **Optimized** — code splitting, faster loads and a compound IndexedDB index
+- **Optimized** — code splitting, faster loads, and a compound IndexedDB index
 
 ---
 
