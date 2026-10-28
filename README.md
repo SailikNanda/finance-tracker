@@ -84,7 +84,7 @@ Find the "Finera" app on your phone; the Home tab opens first. Use More to add p
 The **React app** runs inside the **Capacitor WebView**. Ledger entries are stored in IndexedDB; Android provider keys are encrypted using Keystore. AI reports and consented chat call Groq directly. Rates use ExchangeRate-API with an optional Tavily fallback. GitHub releases provide APK update metadata. PDF code runs in an on-demand worker.
 
 
-The `backend/` folder remains in the repo, but the app no longer uses it at runtime. It is kept for reference and for future use.
+The `backend/` folder remains in the repo, but the app no longer uses it at runtime. It is kept for reference and future use.
 
 ---
 
