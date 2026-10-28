@@ -90,7 +90,7 @@ The `backend/` folder remains in the repo, but the app no longer uses it at runt
 
 ## Release System (one-click)
 
-Two scripts handle everything — no manual version editing required.
+Two scripts handle everything — no manual version editing needed.
 
 ### push-updates.bat — push code changes only
 Double-click (or run `push-updates.bat "commit message"` from a terminal). It commits all changes and pushes them to **GitHub**. No version bump, no release.
