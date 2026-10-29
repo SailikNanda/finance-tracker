@@ -104,6 +104,12 @@ The `backend/` folder remains in the repo, but the app no longer uses it at runt
 
 ## Release System (one-click)
 
+| Script | What it does |
+|---|---|
+| `build-apk.bat` | Builds a debug APK from the current source (see Quick Start) |
+| `push-updates.bat` | Commits and pushes code changes only — no version bump, no release |
+| `release-apk.bat` | Full signed release: version bump, tests, build, tag, and GitHub release |
+
 Two scripts handle everything — no manual version editing required.
 
 ### push-updates.bat — push code changes only
