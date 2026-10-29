@@ -19,6 +19,21 @@ This source includes **audit fixes** not yet in the published APK. See [the fix 
   <img src="https://img.shields.io/badge/Node.js-22.12%2B-339933?style=for-the-badge&logo=nodedotjs&logoColor=white" alt="Node.js 22.12+" loading="lazy" decoding="async" />
 </p>
 
+## Contents
+
+- [v2.2.8 Features](#v228-features)
+- [What's changed (v1.3.0 → v2.2.8)](#whats-changed-v130--v228)
+- [Quick Start (5 minutes)](#quick-start-5-minutes)
+- [How It Works (architecture)](#how-it-works-architecture)
+- [Release System (one-click)](#release-system-one-click)
+- [Where Data Is Stored](#where-data-is-stored)
+- [API Keys (Groq + Tavily): How to Add Them](#api-keys-groq--tavily-how-to-add-them)
+- [Features](#features)
+- [Documentation](#documentation)
+- [Tech Stack](#tech-stack)
+- [License](#license)
+- [Verification](#verification)
+
 ---
 
 ## v2.2.8 Features
