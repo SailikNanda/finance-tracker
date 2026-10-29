@@ -187,6 +187,10 @@ The `backend/` folder is kept for reference.
 
 ## Tech Stack
 
+<p align="center">
+  <img src="https://skillicons.dev/icons?i=react,nodejs,android,java,gradle,python&theme=dark" alt="Tech stack icons" loading="lazy" decoding="async" />
+</p>
+
 - React 18 + Vite 7
 - framer-motion (animations)
 - Capacitor 5 (Android wrapper)
