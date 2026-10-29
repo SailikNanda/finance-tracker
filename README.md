@@ -198,7 +198,9 @@ The `backend/` folder is kept for reference.
 
 ---
 
+<div align="center">
 <img src="https://capsule-render.vercel.app/api?type=rect&color=0:5B86E5,50:36D1DC,100:F09819&height=3&width=100%" alt="divider" loading="lazy" decoding="async" />
+</div>
 
 ## License
 
