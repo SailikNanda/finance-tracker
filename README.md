@@ -1,4 +1,4 @@
-<img src="https://capsule-render.vercel.app/api?type=waving&color=0:5B86E5,50:36D1DC,100:F09819&height=140&section=header&text=Finera&fontSize=42&fontColor=ffffff&fontAlignY=38" alt="Finera banner" width="100%" loading="lazy" decoding="async" />
+<img src="https://capsule-render.vercel.app/api?type=waving&color=0:5B86E5,50:36D1DC,100:F09819&height=140&section=header&text=Finera&fontSize=42&fontColor=ffffff&fontAlignY=38" alt="Finera banner" loading="lazy" decoding="async" />
 
 <img src="https://capsule-render.vercel.app/api?type=rect&color=0:5B86E5,50:36D1DC,100:F09819&height=3&width=100%" alt="divider" loading="lazy" decoding="async" />
 
@@ -244,4 +244,4 @@ GitHub Actions runs finance regression, browser, dependency, and Android compila
 
 The npm postinstall adapter updates Capacitor 5's tar default import for maintained tar 7. It fails if that upstream import changes, so incompatible installs cannot silently ship an unreviewed patch. Node.js 22.12+ is required for Vite 7.
 
-<img src="https://capsule-render.vercel.app/api?type=waving&color=0:5B86E5,50:36D1DC,100:F09819&height=120&section=footer" alt="footer" loading="lazy" decoding="async" />
+<img src="https://capsule-render.vercel.app/api?type=waving&color=0:5B86E5,50:36D1DC,100:F09819&height=120&section=footer" alt="footer" width="100%" loading="lazy" decoding="async" />
