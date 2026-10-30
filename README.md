@@ -1,4 +1,4 @@
-<img src="https://capsule-render.vercel.app/api?type=waving&color=0:5B86E5,50:36D1DC,100:F09819&height=140&section=header&text=Finera&fontSize=42&fontColor=ffffff&fontAlignY=38" alt="Finera banner" loading="lazy" decoding="async" />
+<img src="https://capsule-render.vercel.app/api?type=waving&color=0:5B86E5,50:36D1DC,100:F09819&height=140&section=header&text=Finera&fontSize=42&fontColor=ffffff&fontAlignY=38" alt="Finera banner" width="100%" loading="lazy" decoding="async" />
 
 <img src="https://capsule-render.vercel.app/api?type=rect&color=0:5B86E5,50:36D1DC,100:F09819&height=3&width=100%" alt="divider" loading="lazy" decoding="async" />
 
