@@ -128,6 +128,8 @@ finance-tracker/
 
 Two scripts handle everything — no manual version editing required.
 
+`release-apk.bat` is a thin wrapper that runs `publish-release.ps1`. The helpers `release-tools.ps1` and `check-version.ps1` handle the version bump and confirm the new version is newer than every stable published release.
+
 ### push-updates.bat — push code changes only
 Double-click (or run `push-updates.bat "commit message"` from a terminal). It commits all changes and pushes them to **GitHub**. No version bump, no release.
 
