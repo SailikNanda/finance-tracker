@@ -204,6 +204,8 @@ Android 6+ keys are encrypted at rest; existing plaintext keys migrate only afte
 | **README.md** (this file) | Overview, quick start |
 | **[INSTALL.md](INSTALL.md)** | Detailed setup guide (in English) |
 | **[docs/AUDIT_FIXES.md](docs/AUDIT_FIXES.md)** | Audit report: each finding, the fix applied, and how it was verified |
+| **frontend/** | React + Vite app, Capacitor Android project and end-to-end tests |
+| **backend/** | Legacy FastAPI service, kept for reference |
 
 The `backend/` folder is kept for reference.
 
