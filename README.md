@@ -31,6 +31,7 @@ This source includes **audit fixes** not yet in the published APK. See [the fix 
 - [API Keys (Groq + Tavily): How to Add Them](#api-keys-groq--tavily-how-to-add-them)
 - [Features](#features)
 - [Documentation](#documentation)
+- [Support](#support)
 - [Tech Stack](#tech-stack)
 - [License](#license)
 - [Verification](#verification)
@@ -208,6 +209,12 @@ Android 6+ keys are encrypted at rest; existing plaintext keys migrate only afte
 | **backend/** | Legacy FastAPI service, kept for reference |
 
 The `backend/` folder is kept for reference.
+
+---
+
+## Support
+
+Found a bug or have a suggestion? Open an issue on the [issues page](https://github.com/SailikNanda/finance-tracker/issues). Signed APK builds are published on the [releases page](https://github.com/SailikNanda/finance-tracker/releases).
 
 ---
 
