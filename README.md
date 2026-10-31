@@ -25,6 +25,7 @@ This source includes **audit fixes** not yet in the published APK. See [the fix 
 - [What's changed (v1.3.0 → v2.2.8)](#whats-changed-v130--v228)
 - [Quick Start (5 minutes)](#quick-start-5-minutes)
 - [How It Works (architecture)](#how-it-works-architecture)
+- [Project Structure](#project-structure)
 - [Release System (one-click)](#release-system-one-click)
 - [Where Data Is Stored](#where-data-is-stored)
 - [API Keys (Groq + Tavily): How to Add Them](#api-keys-groq--tavily-how-to-add-them)
@@ -99,6 +100,21 @@ Find the "Finera" app on your phone; the Home tab opens first. Use More to add p
 The **React app** runs inside the **Capacitor WebView**. Ledger entries are stored in IndexedDB; Android provider keys are encrypted using Keystore. AI reports and consented chat call Groq directly. Rates use ExchangeRate-API with an optional Tavily fallback. GitHub releases provide APK update metadata. PDF code runs in an on-demand worker.
 
 The `backend/` folder remains in the repo, but the app no longer uses it at runtime. It is kept for reference and future use.
+
+---
+
+## Project Structure
+
+```text
+finance-tracker/
+├── frontend/           # React + Vite app, Capacitor Android project, tests
+├── backend/            # Legacy FastAPI service, kept for reference
+├── docs/               # AUDIT_FIXES.md
+├── build-apk.bat       # Debug APK build
+├── release-apk.bat     # Signed release: version bump, tests, tag, GitHub release
+├── push-updates.bat    # Commit and push code changes only
+└── INSTALL.md          # Detailed setup guide
+```
 
 ---
 
