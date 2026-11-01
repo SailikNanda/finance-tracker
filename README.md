@@ -127,7 +127,7 @@ finance-tracker/
 | `push-updates.bat` | Commits and pushes code changes only — no version bump, no release |
 | `release-apk.bat` | Full signed release: version bump, tests, build, tag, and GitHub release |
 
-Two scripts handle everything — no manual version editing required.
+These scripts handle everything — no manual version editing required.
 
 `release-apk.bat` is a thin wrapper that runs `publish-release.ps1`. The helpers `release-tools.ps1` and `check-version.ps1` handle the version bump and confirm the new version is newer than every stable published release.
 
