@@ -270,7 +270,7 @@ python -m pytest backend/tests -q
 python -m pip_audit -r backend/requirements.txt
 ```
 
-GitHub Actions runs finance regression, browser, dependency, and Android compilation checks. Optional legacy backend routes require an owner bearer token (`API_AUTH_TOKEN`, at least 32 characters), bind to loopback by default and remain disabled without a configured token. It is a single-owner service, not a multi-user finance API.
+GitHub Actions runs finance regression, browser, dependency, and Android compilation checks ([`verify.yml`](.github/workflows/verify.yml)). Optional legacy backend routes require an owner bearer token (`API_AUTH_TOKEN`, at least 32 characters), bind to loopback by default and remain disabled without a configured token. It is a single-owner service, not a multi-user finance API.
 
 `npm test` runs the finance regression suite on Node's built-in test runner (`node --test`); `npm run test:e2e` drives the browser suite with Playwright.
 
