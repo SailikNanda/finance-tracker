@@ -95,6 +95,8 @@ Copy the APK file to your phone (USB, Google Drive, or email). Open it with a fi
 ### 5. Open the app
 Find the "Finera" app on your phone; the Home tab opens first. Use More to add provider keys and opt in to AI data sharing.
 
+Prefer to try it in a browser first? Run `cd frontend`, then `npm ci`, then `npm run dev` — Vite serves the same React app on a local URL and needs no Android toolchain.
+
 ---
 
 ## How It Works (architecture)
