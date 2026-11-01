@@ -79,7 +79,7 @@ In PowerShell (once):
 ```
 
 ### 3. Build the APK (one-time, ~5 minutes)
-Go to the `S:\Finance Tracker\finance-tracker\` folder and double-click `build-apk.bat`.
+Open the project folder and double-click `build-apk.bat`.
 
 The script performs four tasks:
 1. npm ci
