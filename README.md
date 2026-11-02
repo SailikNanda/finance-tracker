@@ -175,9 +175,9 @@ A phone reset or a factory restore erases your data. To back up:
 
 Open the app and go to the More tab (Settings):
 1. Paste your Groq API key (starts with `gsk_...`) into the "Groq API key" field
-   - Get a key at: https://console.groq.com (free, no card required)
+   - Get a key at: [console.groq.com](https://console.groq.com) (free, no card required)
 2. Paste your Tavily API key (starts with `tvly-...`) into the "Tavily API key" field
-   - Get a key at: https://tavily.com (free tier: 1000 searches/month, no card required)
+   - Get a key at: [tavily.com](https://tavily.com) (free tier: 1000 searches/month, no card required)
 3. Save
 
 Android 6+ keys are encrypted at rest; existing plaintext keys migrate only after secure saving succeeds. Web/Android 5 sessions retain keys in memory only. Keys are sent to their respective provider to authenticate API calls. Enable the AI data-sharing checkbox before requesting personalized AI features.
