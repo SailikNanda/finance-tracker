@@ -67,10 +67,10 @@ This source includes **audit fixes** not yet in the published APK. See [the fix 
 ## Quick Start (5 minutes)
 
 ### 1. Install Node.js 22.12+ and Java JDK 17 (one-time)
-Install Node.js from https://nodejs.org and Java from https://adoptium.net. Keep the default settings and then restart your computer.
+Install Node.js from [nodejs.org](https://nodejs.org) and Java from [adoptium.net](https://adoptium.net). Keep the default settings and then restart your computer.
 
 ### 2. Install Android SDK (one-time)
-Download the command-line tools from https://developer.android.com/studio#command-line-tools-only
+Download the command-line tools from [developer.android.com](https://developer.android.com/studio#command-line-tools-only)
 Extract them into a folder like `C:\Android\android-sdk`.
 
 In PowerShell (once):
@@ -150,7 +150,7 @@ Set `FINERA_KEYSTORE`, `FINERA_STORE_PASSWORD`, `FINERA_KEY_ALIAS`, and `FINERA_
 
 Users see **Update available** after the signed release is published. Export a JSON backup before you upgrade. Do not uninstall an existing app to resolve a signing mismatch; contact the developer.
 
-Requirements (one-time): `gh` CLI (https://cli.github.com) with `gh auth login`. Repo: `SailikNanda/finance-tracker`.
+Requirements (one-time): `gh` CLI ([cli.github.com](https://cli.github.com)) with `gh auth login`. Repo: `SailikNanda/finance-tracker`.
 
 ---
 
