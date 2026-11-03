@@ -192,6 +192,7 @@ Android 6+ keys are encrypted at rest; existing plaintext keys migrate only afte
 - 6-month savings tips
 - Pie and bar charts by category
 - Monthly summary
+- **Month navigation** — step back and forward through months with the arrow controls
 - PDF report export (timestamped filename, spreadsheet-style table)
 - Edit + delete transactions with confirmation
 - A dark glass-morphism UI with iOS-style spring animations
