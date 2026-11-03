@@ -187,6 +187,7 @@ Android 6+ keys are encrypted at rest; existing plaintext keys migrate only afte
 ## Features
 
 - **15+ currencies** with the latest daily rates (ExchangeRate-API / optional Tavily)
+- **Currency converter** — convert between currencies with live rates, an inverse rate and popular rate pairs
 - **AI insights** (Groq Qwen 3.8 27B)
 - 6-month savings tips
 - Pie and bar charts by category
