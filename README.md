@@ -197,6 +197,7 @@ Android 6+ keys are encrypted at rest; existing plaintext keys migrate only afte
 - Edit + delete transactions with confirmation
 - **Search and pagination** in the transaction history, with an empty-state hint when nothing matches
 - **Custom categories** — add your own category names next to the built-in ones
+- **Time-stamped entries** — every transaction records both a date and a time
 - A dark glass-morphism UI with iOS-style spring animations
 - Haptic feedback
 - Offline ledger; mixed-currency totals need valid live or explicitly marked cached rates
