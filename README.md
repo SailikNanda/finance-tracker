@@ -196,6 +196,7 @@ Android 6+ keys are encrypted at rest; existing plaintext keys migrate only afte
 - PDF report export (timestamped filename, spreadsheet-style table)
 - Edit + delete transactions with confirmation
 - **Search and pagination** in the transaction history, with an empty-state hint when nothing matches
+- **Custom categories** — add your own category names next to the built-in ones
 - A dark glass-morphism UI with iOS-style spring animations
 - Haptic feedback
 - Offline ledger; mixed-currency totals need valid live or explicitly marked cached rates
