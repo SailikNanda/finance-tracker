@@ -203,6 +203,7 @@ Android 6+ keys are encrypted at rest; existing plaintext keys migrate only afte
 - Offline ledger; mixed-currency totals need valid live or explicitly marked cached rates
 - No required backend; external AI and rate providers as described above
 - Data backup/restore (JSON)
+- **Two restore modes** — merge and skip duplicates, or replace the entire ledger
 
 ---
 
