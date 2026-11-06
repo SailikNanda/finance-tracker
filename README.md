@@ -36,6 +36,7 @@ This source includes **audit fixes** not yet in the published APK. See [the fix 
 - [Tech Stack](#tech-stack)
 - [License](#license)
 - [Verification](#verification)
+- [Troubleshooting](#troubleshooting)
 
 ---
 
