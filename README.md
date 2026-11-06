@@ -282,6 +282,38 @@ GitHub Actions runs finance regression, browser, dependency, and Android compila
 
 The npm postinstall adapter updates Capacitor 5's tar default import for maintained tar 7. It fails if that upstream import changes, so incompatible installs cannot silently ship an unreviewed patch. Node.js 22.12+ is required for Vite 7.
 
+## Troubleshooting
+
+<details>
+<summary><strong>The app reports “Update available” but the install fails</strong></summary>
+
+The new APK has to be signed with the same key as the app already on the phone. Use the signing key of the currently installed APK — a different key cannot update an existing installation in place. Do not uninstall the app to get around a signing mismatch; contact the developer instead.
+
+</details>
+
+<details>
+<summary><strong><code>build-apk.bat</code> stops at <code>npm ci</code></strong></summary>
+
+Node.js 22.12+ is required, because Vite 7 and the npm postinstall adapter both depend on it. Install a current release from [nodejs.org](https://nodejs.org) and run the script again.
+
+</details>
+
+<details>
+<summary><strong>The build cannot find the Android SDK</strong></summary>
+
+`ANDROID_HOME` has to point at the command-line tools you extracted in Quick Start step 2. Set it once in PowerShell, then open a new terminal so the value is picked up.
+
+</details>
+
+<details>
+<summary><strong>AI features or live rates stop working</strong></summary>
+
+AI reports and consented chat call Groq directly, and rates use ExchangeRate-API with an optional Tavily fallback — both need internet access and a saved provider key from the More tab. The ledger itself keeps working offline.
+
+</details>
+
+---
+
 [↑ Back to contents](#contents)
 
 <img src="https://capsule-render.vercel.app/api?type=waving&color=0:5B86E5,50:36D1DC,100:F09819&height=120&section=footer" alt="footer" width="100%" loading="lazy" decoding="async" />
