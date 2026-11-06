@@ -15,6 +15,8 @@ This source includes **audit fixes** not yet in the published APK. See [the fix 
   <img src="https://img.shields.io/badge/Platform-Android-3DDC84?style=for-the-badge&logo=android&logoColor=white" alt="Android" loading="lazy" decoding="async" />
   <img src="https://img.shields.io/badge/License-MIT-3DDC84?style=for-the-badge&logo=opensourceinitiative&logoColor=white" alt="MIT License" loading="lazy" decoding="async" />
   <img src="https://img.shields.io/badge/AI-Groq%20Qwen-F09819?style=for-the-badge" alt="AI powered by Groq Qwen" loading="lazy" decoding="async" />
+  <img src="https://img.shields.io/badge/Storage-IndexedDB-5B86E5?style=for-the-badge&logo=googlechrome&logoColor=white" alt="Transactions stored in IndexedDB on the phone" loading="lazy" decoding="async" />
+  <img src="https://img.shields.io/badge/Data-Local%20Only-36D1DC?style=for-the-badge&logo=shield&logoColor=white" alt="Ledger data stays on the device" loading="lazy" decoding="async" />
   <img src="https://img.shields.io/badge/React-18-61DAFB?style=for-the-badge&logo=react&logoColor=white" alt="React 18" loading="lazy" decoding="async" />
   <img src="https://img.shields.io/badge/Node.js-22.12%2B-339933?style=for-the-badge&logo=nodedotjs&logoColor=white" alt="Node.js 22.12+" loading="lazy" decoding="async" />
   <img src="https://img.shields.io/github/actions/workflow/status/SailikNanda/finance-tracker/verify.yml?style=for-the-badge&label=Verify&color=5B86E5&logo=github" alt="Verify finance and security workflow status" loading="lazy" decoding="async" />
