@@ -65,6 +65,8 @@ This source includes **audit fixes** not yet in the published APK. See [the fix 
 | OTA update (5 seconds) | ❌ Removed — now APK rebuild (≈30 seconds) |
 | Web + APK | Pure APK (Capacitor) |
 
+<sub>❌ marks a capability that was removed rather than replaced.</sub>
+
 ---
 
 ## Quick Start (5 minutes)
