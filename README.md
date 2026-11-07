@@ -1,6 +1,6 @@
 <img src="https://capsule-render.vercel.app/api?type=waving&color=0:5B86E5,50:36D1DC,100:F09819&height=140&section=header&text=Finera&fontSize=42&fontColor=ffffff&fontAlignY=38" alt="Finera banner" width="100%" loading="eager" fetchpriority="high" decoding="async" />
 
-<img src="https://capsule-render.vercel.app/api?type=rect&color=0:5B86E5,50:36D1DC,100:F09819&height=3&width=100%" alt="" width="100%" loading="lazy" decoding="async" />
+<img src="https://capsule-render.vercel.app/api?type=rect&color=0:5B86E5,50:36D1DC,100:F09819&height=3&width=100%" alt=" height="3" width="100%" loading="lazy" decoding="async" />
 
 # Finera v2.2.8 — Pure APK, Zero Backend
 
@@ -248,7 +248,7 @@ Found a bug or have a suggestion? Open an issue on the [issues page](https://git
 ---
 
 <div align="center">
-<img src="https://capsule-render.vercel.app/api?type=rect&color=0:5B86E5,50:36D1DC,100:F09819&height=3&width=100%" alt="" width="100%" loading="lazy" decoding="async" />
+<img src="https://capsule-render.vercel.app/api?type=rect&color=0:5B86E5,50:36D1DC,100:F09819&height=3&width=100%" alt=" height="3" width="100%" loading="lazy" decoding="async" />
 </div>
 
 ## License
@@ -256,7 +256,7 @@ Found a bug or have a suggestion? Open an issue on the [issues page](https://git
 MIT.
 
 <div align="center">
-<img src="https://capsule-render.vercel.app/api?type=rect&color=0:5B86E5,50:36D1DC,100:F09819&height=3&width=100%" alt="" width="100%" loading="lazy" decoding="async" />
+<img src="https://capsule-render.vercel.app/api?type=rect&color=0:5B86E5,50:36D1DC,100:F09819&height=3&width=100%" alt=" height="3" width="100%" loading="lazy" decoding="async" />
 </div>
 
 ## Verification
