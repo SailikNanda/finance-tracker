@@ -236,6 +236,8 @@ Found a bug or have a suggestion? Open an issue on the [issues page](https://git
   <img src="https://skillicons.dev/icons?i=react,nodejs,android,java,gradle,python&theme=dark" alt="Tech stack icons" loading="lazy" decoding="async" />
 </p>
 
+<p align="center"><sub><strong>React</strong> &nbsp;·&nbsp; <strong>Node.js</strong> &nbsp;·&nbsp; <strong>Android</strong> &nbsp;·&nbsp; <strong>Java</strong> &nbsp;·&nbsp; <strong>Gradle</strong> &nbsp;·&nbsp; <strong>Python</strong></sub></p>
+
 - React 18 + Vite 7
 - framer-motion (animations)
 - Capacitor 5 (Android wrapper)
