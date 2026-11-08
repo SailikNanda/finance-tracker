@@ -235,7 +235,10 @@ Found a bug or have a suggestion? Open an issue on the [issues page](https://git
 ## Tech Stack
 
 <p align="center">
-  <img src="https://skillicons.dev/icons?i=react,nodejs,android,java,gradle,python&theme=dark" alt="Tech stack icons" loading="lazy" decoding="async" />
+  <picture>
+    <source media="(prefers-color-scheme: light)" srcset="https://skillicons.dev/icons?i=react,nodejs,android,java,gradle,python&theme=light" />
+    <img src="https://skillicons.dev/icons?i=react,nodejs,android,java,gradle,python&theme=dark" alt="Tech stack icons" loading="lazy" decoding="async" />
+  </picture>
 </p>
 
 <p align="center"><sub><strong>React</strong> &nbsp;·&nbsp; <strong>Node.js</strong> &nbsp;·&nbsp; <strong>Android</strong> &nbsp;·&nbsp; <strong>Java</strong> &nbsp;·&nbsp; <strong>Gradle</strong> &nbsp;·&nbsp; <strong>Python</strong></sub></p>
