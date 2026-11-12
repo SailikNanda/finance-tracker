@@ -75,7 +75,7 @@ This source includes **audit fixes** not yet in the published APK. See [the fix 
 Install Node.js from [nodejs.org](https://nodejs.org) and Java from [adoptium.net](https://adoptium.net). Keep the default settings and then restart your computer.
 
 ### 2. Install Android SDK (one-time)
-Download the command-line tools from [developer.android.com](https://developer.android.com/studio#command-line-tools-only).
+Download the command-line tools from [developer.android.com](https://developer.android.com/studio#command-line-tools-only)
 Extract them into a folder like `C:\Android\android-sdk`.
 
 In PowerShell (once):
@@ -87,10 +87,10 @@ In PowerShell (once):
 Open the project folder and double-click `build-apk.bat`.
 
 The script performs four tasks:
-1. npm ci
-2. vite build
-3. npx cap sync android
-4. gradle assembleDebug
+1. `npm ci`
+2. `vite build`
+3. `npx cap sync android`
+4. `gradle assembleDebug`
 
 APK output: `frontend\android\app\build\outputs\apk\debug\app-debug.apk`
 
